@@ -87,17 +87,17 @@ function clock(seconds: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function RevealStage({ demoAnswer }: { demoAnswer?: Answer }) {
+export function RevealStage({ demoAnswer, demoInteractive = false }: { demoAnswer?: Answer; demoInteractive?: boolean }) {
   const { event, locale, me, teamPresets, revealStyle, demo } = useInvite();
   const { live } = useLive();
-  const t = getMessages(locale);
+  const t = getMessages(locale).reveal;
   const calm = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
 
   const phase = live?.phase ?? "idle";
   const counting = phase === "countdown" && live?.revealAt != null;
   const [fetched, setFetched] = useState<Answer | null>(null);
   // Was this guest in the lobby? Then they get to open it themselves; a late opener sees the result.
-  const [witnessed, setWitnessed] = useState(false);
+  const [witnessed, setWitnessed] = useState(demoInteractive);
   const [opened, setOpened] = useState(false);
   if (counting && !witnessed) setWitnessed(true);
 
@@ -164,7 +164,7 @@ export function RevealStage({ demoAnswer }: { demoAnswer?: Answer }) {
   return (
     <section id="reveal" className="inv-stage" aria-labelledby="reveal-title" data-phase={showResult ? "result" : interactive ? "open" : counting ? "countdown" : "idle"} data-testid="reveal-stage">
       <h2 id="reveal-title" className={showResult ? "inv-sr" : "inv-stage__title"} tabIndex={-1} ref={headingRef}>
-        {t.reveal.title}
+        {t.title}
       </h2>
 
       {showResult && answer ? (
@@ -172,9 +172,9 @@ export function RevealStage({ demoAnswer }: { demoAnswer?: Answer }) {
           <p className="inv-result__headline">
             {babies.map((baby, index) => (
               <span key={index}>
-                {index > 0 ? <span className="inv-result__and">{t.reveal.and}</span> : null}
+                {index > 0 ? <span className="inv-result__and">{t.and}</span> : null}
                 <span className="inv-result__word" style={{ "--answer": baby.color } as CSSProperties}>
-                  {babies.length === 1 ? t.reveal.itsA(baby.label) : baby.label}
+                  {babies.length === 1 ? t.itsA(baby.label) : baby.label}
                 </span>
               </span>
             ))}
@@ -186,29 +186,29 @@ export function RevealStage({ demoAnswer }: { demoAnswer?: Answer }) {
           ) : null}
           {calm || demo ? null : (
             <button type="button" className="inv-link" onClick={() => (setWitnessed(true), setOpened(false))}>
-              {t.reveal.again}
+              {t.again}
             </button>
           )}
         </div>
       ) : interactive ? (
         <div className="inv-stage__open">
-          <Style babies={babies} t={t.reveal} onDone={finish} />
+          <Style babies={babies} t={t} onDone={finish} />
           <button type="button" className="inv-link" onClick={finish}>
-            {t.reveal.showNow}
+            {t.showNow}
           </button>
         </div>
       ) : counting ? (
         <div className="inv-lobby" data-testid="reveal-countdown">
-          <p className="inv-lobby__label">{atZero ? t.reveal.almost : t.reveal.lobby}</p>
+          <p className="inv-lobby__label">{atZero ? t.almost : t.lobby}</p>
           <p className="inv-lobby__clock inv-num" role="timer" aria-live="off" data-urgent={seconds !== null && seconds <= 10 ? "true" : "false"}>
             <span key={seconds ?? "x"} className="inv-lobby__digits">
               {seconds === null ? "–" : atZero ? "0" : clock(seconds)}
             </span>
           </p>
-          <p className="inv-stage__body">{t.reveal.lobbyBody}</p>
+          <p className="inv-stage__body">{t.lobbyBody}</p>
         </div>
       ) : (
-        <p className="inv-stage__body">{t.reveal.idle}</p>
+        <p className="inv-stage__body">{t.idle}</p>
       )}
     </section>
   );

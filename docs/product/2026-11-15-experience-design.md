@@ -3,15 +3,13 @@
 Date: 2026-11-15. Status: **draft for approval**. Companion to `2026-11-15-product-plan.md`.
 Evidence: [V] read on the vendor's page, [S] search snippet only. Rankings and build ratings are our own judgement — no source ranks these mechanics by popularity.
 
-**Decided by you:** the guest experience must be genuinely entertaining (teams, games, competition); launch sets are weddings, gender reveal, corporate events and catered gatherings; brand is Arabic with Arabic and English at equal weight; pricing as proposed; name and palette are placeholders until you send the real ones.
-
-**"Catering" as understood here (my reading — correct me):** gatherings where food is the centre — 3ezouma, iftar/suhoor invitations, private dinners, tastings, corporate lunches — plus catering companies as business customers who send a branded event page for each client event.
+**Decided by you:** the guest experience must be genuinely entertaining (teams, games, competition); launch sets are weddings, gender reveal and corporate events (catered gatherings were considered and dropped on 2026-11-15); brand is Arabic with Arabic and English at equal weight; pricing as proposed; name and palette are placeholders until you send the real ones.
 
 ---
 
 ## 1. What the research says
 
-- **Nobody in Arabic does guest games.** Arabic results were only freelancers selling animated invitation pages. Catering software faces the paying client, never the guests. Arabic QR-invitation apps have no game layer.
+- **Nobody in Arabic does guest games.** Arabic results were only freelancers selling animated invitation pages. Arabic QR-invitation apps have no game layer.
 - **The closest products abroad:**
   - QuizYourGuests [V] — Team Bride vs Team Groom, points for quiz answers, photo uploads and meeting someone from the other side; big-screen mode. Free with banner / £29.
   - RevealTogether [V] — Team Boy / Team Girl live tally, synchronised countdown on every screen, a "secret keeper" who enters the answer so the parents are surprised too. $7.99–$39.99.
@@ -143,37 +141,7 @@ Guest flow: open link → Team Boy / Team Girl → roster + badge → clues and 
 
 ---
 
-## 6. Catered gatherings
-
-**Core loop:** the menu is the star → guests choose and vote before → taste, score and guess during → recipes and "book this caterer" after.
-
-| # | Mechanic | What the guest does | When | Release |
-|---|---|---|---|---|
-| 1 | Interactive menu | Browses course by course with photos, allergen and spice tags; shared platters supported | Before + during | Launch |
-| 2 | Pick your dish | Chooses per guest, with capped options and a cut-off date | Before | Launch |
-| 3 | Dietary and allergy capture | Diabetic, vegetarian, siyami, nut, gluten, free text → a kitchen sheet for the caterer | Before | Launch |
-| 4 | Vote on the menu | Dessert A vs B, the one wildcard dish; result revealed at the table | Before | Launch |
-| 5 | Potluck board | Claim a dish, see what's taken; "bring nothing" and "dessert or drinks only" settings | Before | Launch |
-| 6 | Predictions | "Which dish runs out first?", "how many kunafa pieces?" | Before → during | Launch |
-| 7 | Tasting scorecard | Rate each dish, then see the table's ranking | During | Launch |
-| 8 | Dish of the night | Vote and live reveal at the end | During | Launch |
-| 9 | Chef's story cards | Origin of each dish, unlocked per course | During | Launch |
-| 10 | Guess the ingredient / blind tasting | Scored, table vs table | During | Release 2 |
-| 11 | Table finder + conversation prompt | Who's at my table, with a prompt each | Before + during | Release 2 |
-| 12 | Table-vs-table food trivia | Between courses | During, live | Release 2 |
-| 13 | Best plate photo | Shared album and a vote | During + after | Release 2 |
-| 14 | Recipe unlock | The winning dish's recipe after the event | After | Launch |
-| 15 | "Book this caterer" card | Shareable menu and ratings with the caterer's contact | After | Launch |
-
-**Information blocks (launch):** host and occasion, arrival time vs food-served time (maghrib for iftar), address with map pin + building/floor/flat + compound gate notes + parking, full menu by course, service style (buffet, family-style, plated), dress code, kids and plus-ones, what to bring, seating, RSVP deadline, host WhatsApp, caterer credit.
-
-**For catering companies (business customers):** a branded page per client event with their logo, the kitchen sheet (dish counts, dietary list), ratings data, and the booking card that turns guests into leads.
-
-**Avoid:** menu polls the kitchen can't honour; public low scores for a home cook's dish (home events show only the favourite; full scores are for professional tastings); collecting allergies without delivering them to the kitchen; home addresses on a forwardable public page — location is sent per guest; games in the first minutes of iftar.
-
----
-
-## 7. What makes it spread
+## 6. What makes it spread
 
 1. A personal share card after every action (badge, score, winner), in square and story formats, with the link inside.
 2. A WhatsApp link preview that shows the live team score, so the link looks alive in the group chat.
@@ -184,7 +152,7 @@ Guest flow: open link → Team Boy / Team Girl → roster + badge → clues and 
 
 ---
 
-## 8. Placeholder brand and theming
+## 7. Placeholder brand and theming
 
 Until you send the real name, logo and palette:
 
@@ -208,13 +176,13 @@ Until you send the real name, logo and palette:
 
 ---
 
-## 9. Scope check
+## 8. Scope check
 
-Four occasion sets at launch is twice the earlier plan, so the launch is built as: the play engine first, then each set as a content pack on top of it. The "Launch" column above is what ships first for each set; "Release 2" follows. The live, everyone-at-once features (synchronised reveal, big screen, live quiz rounds) need a real-time layer — the synchronised reveal is the only one that must be in the launch.
+Three occasion sets at launch, so the launch is built as: the play engine first, then each set as a content pack on top of it. The "Launch" column above is what ships first for each set; "Release 2" follows. The live, everyone-at-once features (synchronised reveal, big screen, live quiz rounds) need a real-time layer — the synchronised reveal is the only one that must be in the launch.
 
-Template count at launch (my call): 2 wedding, 1 gender reveal, 1 corporate, 1 catered gathering — five scenes to generate, each through the playbook's approval gates.
+Template count at launch (my call): 2 wedding, 1 gender reveal, 1 corporate — four scenes to generate, each through the playbook's approval gates.
 
 ## Sources
 
 Weddings / gender reveal: quizyourguests.com, svenstudios.com/happlee-qr, triviaanywhere.com/use-cases/weddings, kahoot.com/home/wedding-games, wedibox.com, revealtogether.com, genderreveal.live, egyptianstreets.com (sebou), cairoscene.com (henna night), en.wikipedia.org/wiki/Zaffa, arabicpost.net (no2ta).
-Corporate / catering: slido.com/product, mentimeter.com/plans, kahoot360.com/pricing, goosechase.com/features, whova.com/blog/best-event-gamification-ideas, luma.com/pricing, tripleseat.com/features/guest-portal, help.rsvpify.com (meal preferences), cairo360.com (corporate iftar), gpg-pdf.chambers.com/Advertising-and-Marketing-2025/113 (prize promotions), commisceo-global.com/country-guides/egypt-guide.
+Corporate: slido.com/product, mentimeter.com/plans, kahoot360.com/pricing, goosechase.com/features, whova.com/blog/best-event-gamification-ideas, luma.com/pricing, cairo360.com (corporate iftar), gpg-pdf.chambers.com/Advertising-and-Marketing-2025/113 (prize promotions), commisceo-global.com/country-guides/egypt-guide.

@@ -49,7 +49,7 @@ Constraints this puts on the design:
 | Graduation | Stage, cap toss | Class wall, photo wall |
 | Corporate | Venue approach, stage curtain | Registration with approval, agenda, speakers, QR badges |
 
-Launch set **(decided):** weddings, gender reveal, corporate events and catered gatherings. Sebou, birthday and graduation follow on the same engine.
+Launch set **(decided):** weddings, gender reveal and corporate events. Sebou, birthday and graduation follow on the same engine.
 
 The guest experience must be entertaining, not just informative — teams, games, competition, live moments. The mechanics for each set are specified in `2026-11-15-experience-design.md`.
 
@@ -187,7 +187,7 @@ Corporate, live stream, face search, time capsule, bespoke scenes at scale, whit
 
 Settled (2026-11-15):
 - Plan and P1 list approved.
-- Launch sets: weddings, gender reveal, corporate events, catered gatherings.
+- Launch sets: weddings, gender reveal, corporate events. (Catered gatherings dropped.)
 - Fun-first guest experience (see the experience design doc).
 - Arabic brand; Arabic and English at equal weight.
 - Pricing direction approved as proposed in §6.

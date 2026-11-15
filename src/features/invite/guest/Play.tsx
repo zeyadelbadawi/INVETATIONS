@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { pick } from "@/content/schema";
 import { getMessages } from "../messages";
 import { apiPost, guestPath } from "../lib/api";
-import { Icon } from "../Icon";
 import type { GuestPlayer } from "../types";
 import { teamColor, useInvite } from "./GuestContext";
 import { Scoreboard } from "./Scoreboard";
@@ -37,11 +36,10 @@ function RejoinCode({ code, onDone }: { code: string; onDone: () => void }) {
 function Badge() {
   const { me, locale } = useInvite();
   const t = getMessages(locale);
-  const ref = useRef<HTMLDivElement>(null);
   if (!me?.player) return null;
   const team = me.teams.find((item) => item.id === me.player?.teamId);
   return (
-    <div className="inv-badge" style={{ "--team": teamColor(team?.color) } as CSSProperties} ref={ref} data-testid="badge">
+    <div className="inv-badge" style={{ "--team": teamColor(team?.color) } as CSSProperties} data-testid="badge">
       <span className="inv-badge__name">{me.player.name}</span>
       <span className="inv-badge__team">{team ? t.play.badge(pick(team.name, locale)) : t.play.noTeam}</span>
       {me.player.approved ? null : <span className="inv-hint">{t.play.pending}</span>}
@@ -219,8 +217,4 @@ export function Play() {
       {me.player ? null : <p className="inv-sr">{t.games.joinToPlay}</p>}
     </section>
   );
-}
-
-export function PlayIcon() {
-  return <Icon name="check" />;
 }

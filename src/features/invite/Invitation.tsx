@@ -6,7 +6,10 @@ import type { CSSProperties } from "react";
 import { pick, type Block } from "@/content/schema";
 import { brand } from "@/config/brand";
 import { dirOf, otherLocale, type Locale } from "@/i18n/config";
-import { MotionProvider, buildPageSceneData, prefetchScript, serializePageSceneData, splashBootScript, splashCss, sceneNoScriptCss, SCENE_DATA_ID } from "@/scenes";
+// Imported file by file: the scenes barrel pulls in client-only hooks, and this module also renders on the server.
+import { MotionProvider } from "@/scenes/MotionProvider";
+import { prefetchScript, splashBootScript, splashCss, sceneNoScriptCss } from "@/scenes/boot-script";
+import { buildPageSceneData, serializePageSceneData, SCENE_DATA_ID } from "@/scenes/page-data";
 import type { Palette, Template } from "@/templates/types";
 import { getMessages } from "./messages";
 import { inviteFontClass } from "./fonts";

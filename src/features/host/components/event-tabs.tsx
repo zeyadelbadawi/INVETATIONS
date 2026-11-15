@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Locale } from "@/i18n/config";
 import { hostMessages } from "../messages";
 
-const SECTIONS = ["edit", "settings", "invitations", "publish"] as const;
+const SECTIONS = ["edit", "settings", "invitations", "play", "publish"] as const;
 
 export function EventTabs({ lang, eventId }: { lang: Locale; eventId: string }) {
   const t = hostMessages(lang).nav;

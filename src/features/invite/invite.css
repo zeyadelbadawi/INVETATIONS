@@ -1814,3 +1814,6 @@ textarea.inv-input {
     animation: none;
   }
 }
+.inv-gate__mark {
+  display: inline-grid;
+}

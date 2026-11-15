@@ -36,6 +36,8 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
   const [pane, setPane] = useState<"form" | "preview">("form");
   const [previewLocale, setPreviewLocale] = useState<Locale>(lang);
 
+  const { id: templateId, version: templateVersion, kind } = template;
+
   const iframe = useRef<HTMLIFrameElement>(null);
   // The newest draft and its revision, readable from timers without waiting for a render.
   const latest = useRef<Draft & { revision: number; locale: Locale }>({
@@ -57,7 +59,16 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
     // host's own draft, and (3) messages coming back are accepted only when
     // event.source is that same window (see the listener below).
     iframe.current?.contentWindow?.postMessage(
-      { type: "lamma:draft", content: latest.current.content, theme: latest.current.theme, locale: latest.current.locale },
+      {
+        type: "lamma:draft",
+        content: latest.current.content,
+        theme: latest.current.theme,
+        locale: latest.current.locale,
+        // Which template the preview should render; fixed for an event, taken from its row.
+        templateId: template.id,
+        templateVersion: template.version,
+        kind: template.kind,
+      },
       "*",
     );
   }
@@ -118,14 +129,25 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
       const data: unknown = event.data;
       if (typeof data === "object" && data !== null && (data as { type?: unknown }).type === "lamma:preview-ready") {
         iframe.current.contentWindow?.postMessage(
-          { type: "lamma:draft", content: latest.current.content, theme: latest.current.theme, locale: latest.current.locale },
+          {
+            type: "lamma:draft",
+            content: latest.current.content,
+            theme: latest.current.theme,
+            locale: latest.current.locale,
+            templateId,
+            templateVersion,
+            kind,
+          },
           "*",
         );
       }
     }
     window.addEventListener("message", onMessage);
+    // Sent again whenever the template identity changes; harmless before the
+    // preview is listening, because it asks for the draft when it is ready.
+    onMessage({ source: iframe.current?.contentWindow, data: { type: "lamma:preview-ready" } } as MessageEvent);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [templateId, templateVersion, kind]);
 
   // Leaving with unsaved work: ask the browser to confirm, and try a last save
   // when the editor is unmounted by in-app navigation.

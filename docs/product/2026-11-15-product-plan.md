@@ -49,7 +49,9 @@ Constraints this puts on the design:
 | Graduation | Stage, cap toss | Class wall, photo wall |
 | Corporate | Venue approach, stage curtain | Registration with approval, agenda, speakers, QR badges |
 
-Launch set **(my call):** wedding family + gender reveal. Wedding is where the money is; gender reveal is small in revenue but nobody has it and it is the most shareable thing we can make. Sebou and birthday follow immediately because they reuse the same engine.
+Launch set **(decided):** weddings, gender reveal, corporate events and catered gatherings. Sebou, birthday and graduation follow on the same engine.
+
+The guest experience must be entertaining, not just informative — teams, games, competition, live moments. The mechanics for each set are specified in `2026-11-15-experience-design.md`.
 
 ## 5. Full feature set
 
@@ -181,8 +183,16 @@ Corporate, live stream, face search, time capsule, bespoke scenes at scale, whit
 2. **Free-form page builder like Mithaq, with more features.** Faster to reach parity, but we would be competing on feature count against someone with a head start, and flat pages look like everyone else's.
 3. **Guest-operations first (Gulf model), page later.** Proven revenue per guest, but depends on WhatsApp API costs we have not verified and has no visual wow — it is the opposite of what you asked for.
 
-## 11. Open decisions for you
+## 11. Decisions
 
-1. Approve or change the launch set (§4) and the P1 list (§5).
-2. Brand name, and whether the product is Arabic-first with English, or equal.
-3. Pricing direction (§6): above the market, as proposed, or matching it.
+Settled (2026-11-15):
+- Plan and P1 list approved.
+- Launch sets: weddings, gender reveal, corporate events, catered gatherings.
+- Fun-first guest experience (see the experience design doc).
+- Arabic brand; Arabic and English at equal weight.
+- Pricing direction approved as proposed in §6.
+- Brand name, logo and palette are placeholders (Lamma / لَمّة) behind tokens and one config file; the real ones are swapped in at the end.
+
+Still open:
+- The verification items in §8.
+- Legal advice on prize draws before any public (non-private) draw feature.

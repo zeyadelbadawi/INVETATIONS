@@ -1,0 +1,197 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: guest.spec.ts >> personal link: the address appears, the reply is saved, survives a reload and can be changed
+- Location: e2e/invite/guest.spec.ts:10:1
+
+# Error details
+
+```
+Test timeout of 90000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - generic [ref=f1e5]:
+        - img "مشهد افتتاح الدعوة" [ref=f1e6]
+        - generic [ref=f1e7]:
+          - paragraph [ref=f1e9]: نتشرف بدعوتكم لحضور زفاف
+          - paragraph [ref=f1e10]: ياسمين
+          - paragraph [ref=f1e11]: عمر
+          - paragraph [ref=f1e12]: الجمعة 25 ديسمبر
+        - generic [ref=f1e14]:
+          - link "View this invitation in English" [ref=f1e15] [cursor=pointer]:
+            - /url: /i/e2e-wedding-798fed/en
+            - text: English
+          - paragraph [ref=f1e16]: أهلاً يا عيلة الأستاذ أحمد
+      - link [aria-hidden]:
+        - /url: "#details"
+        - text: التفاصيل والرد
+    - main [ref=f1e18]:
+      - region "الميعاد والمكان" [ref=f1e19]:
+        - heading "الميعاد والمكان" [level=2] [ref=f1e20]
+        - generic [ref=f1e21]:
+          - generic [ref=f1e22]: "25"
+          - paragraph [ref=f1e23]:
+            - generic [ref=f1e24]: الجمعة
+            - time [ref=f1e25]: ديسمبر 2026
+            - generic [ref=f1e26]: 7:00 م
+        - paragraph [ref=f1e27]:
+          - generic [ref=f1e28]: قاعة اللوتس
+          - generic [ref=f1e29]: القاهرة الجديدة
+        - paragraph [ref=f1e30]: الأبواب تفتح 6:00 م
+        - group "ضيفها للتقويم" [ref=f1e33]:
+          - link "تقويم جوجل" [ref=f1e34] [cursor=pointer]:
+            - /url: https://calendar.google.com/calendar/render?action=TEMPLATE&text=%D9%8A%D8%A7%D8%B3%D9%85%D9%8A%D9%86+%D9%88%D8%B9%D9%85%D8%B1&dates=20261225T170000Z%2F20261225T220000Z&ctz=Africa%2FCairo&details=%2Fi%2Fe2e-wedding-798fed%2Far&location=%D9%82%D8%A7%D8%B9%D8%A9+%D8%A7%D9%84%D9%84%D9%88%D8%AA%D8%B3%2C+%D8%A7%D9%84%D9%82%D8%A7%D9%87%D8%B1%D8%A9+%D8%A7%D9%84%D8%AC%D8%AF%D9%8A%D8%AF%D8%A9
+          - button "ملف تقويم" [ref=f1e37] [cursor=pointer]
+      - region "فاضل" [ref=f1e40]:
+        - heading "فاضل" [level=2] [ref=f1e41]
+        - timer "فاضل" [ref=f1e42]:
+          - generic [ref=f1e43]:
+            - generic [ref=f1e44]: "39"
+            - generic [ref=f1e45]: يوم
+          - generic [ref=f1e46]:
+            - generic [ref=f1e47]: "17"
+            - generic [ref=f1e48]: ساعة
+          - generic [ref=f1e49]:
+            - generic [ref=f1e50]: "26"
+            - generic [ref=f1e51]: دقيقة
+          - generic [ref=f1e52]:
+            - generic [ref=f1e53]: "09"
+            - generic [ref=f1e54]: ثانية
+      - figure "سورة الروم" [ref=f1e56]:
+        - blockquote [ref=f1e57]:
+          - paragraph [ref=f1e58]: ومن آياته أن خلق لكم من أنفسكم أزواجاً لتسكنوا إليها
+      - region "حكايتنا" [ref=f1e60]:
+        - heading "حكايتنا" [level=2] [ref=f1e61]
+        - generic [ref=f1e62]:
+          - paragraph [ref=f1e63]: اتقابلنا في الجامعة من سبع سنين.
+          - paragraph [ref=f1e64]: ومن يومها وإحنا مع بعض.
+      - region "العيلتين" [ref=f1e65]:
+        - heading "العيلتين" [level=2] [ref=f1e66]
+        - generic [ref=f1e67]:
+          - generic [ref=f1e68]:
+            - heading "أهل العروسة" [level=3] [ref=f1e69]
+            - list [ref=f1e70]:
+              - listitem [ref=f1e71]: أ. محمود السيد
+              - listitem [ref=f1e72]: م. هالة فؤاد
+          - generic [ref=f1e73]:
+            - heading "أهل العريس" [level=3] [ref=f1e74]
+            - list [ref=f1e75]:
+              - listitem [ref=f1e76]: د. خالد منصور
+              - listitem [ref=f1e77]: أ. منى عادل
+      - region "برنامج اليوم" [ref=f1e78]:
+        - heading "برنامج اليوم" [level=2] [ref=f1e79]
+        - list [ref=f1e80]:
+          - listitem [ref=f1e81]:
+            - generic [ref=f1e82]: 7:00
+            - generic [ref=f1e83]:
+              - generic [ref=f1e84]: استقبال الضيوف
+              - generic [ref=f1e85]: عصاير وشربات
+          - listitem [ref=f1e86]:
+            - generic [ref=f1e87]: 8:00
+            - generic [ref=f1e88]: الزفة
+          - listitem [ref=f1e90]:
+            - generic [ref=f1e91]: 9:30
+            - generic [ref=f1e92]: العشا
+      - region "المكان" [ref=f1e94]:
+        - heading "المكان" [level=2] [ref=f1e95]
+        - paragraph [ref=f1e96]: قاعة اللوتس
+        - paragraph [ref=f1e97]: SENTINEL-ADDRESS-7781 شارع التسعين، التجمع الخامس
+        - paragraph [ref=f1e98]:
+          - generic [ref=f1e101]:
+            - generic [ref=f1e102]: "الركن:"
+            - text: ركن مجاني عند البوابة 2
+        - link "افتح الخريطة" [ref=f1e103] [cursor=pointer]:
+          - /url: https://www.google.com/maps/search/?api=1&query=30.0131,31.4913
+      - region "اللبس" [ref=f1e106]:
+        - heading "اللبس" [level=2] [ref=f1e107]
+        - paragraph [ref=f1e108]: رسمي — يفضّل ألوان هادية
+        - list "ألوان مقترحة" [ref=f1e109]:
+          - listitem [ref=f1e110]:
+            - generic [ref=f1e111]: "#b5552d"
+          - listitem [ref=f1e112]:
+            - generic [ref=f1e113]: "#ecd9c6"
+          - listitem [ref=f1e114]:
+            - generic [ref=f1e115]: "#2f7d5b"
+      - region "خد بالك" [ref=f1e116]:
+        - heading "خد بالك" [level=2] [ref=f1e117]
+        - list [ref=f1e118]:
+          - listitem [ref=f1e119]: الحفل للكبار فقط
+          - listitem [ref=f1e120]: ممنوع التصوير أثناء كتب الكتاب
+      - region "أسئلة بتتسأل" [ref=f1e121]:
+        - heading "أسئلة بتتسأل" [level=2] [ref=f1e122]
+        - group [ref=f1e124]:
+          - generic "فيه ركن؟" [ref=f1e125] [cursor=pointer]
+      - region "هتشرّفنا؟" [ref=f1e129]:
+        - heading "هتشرّفنا؟" [level=2] [ref=f1e130]
+        - paragraph [ref=f1e131]: "الرد عن: عيلة الأستاذ أحمد"
+        - generic [ref=f1e132]:
+          - group "هتشرّفنا؟" [ref=f1e133]:
+            - generic [ref=f1e135] [cursor=pointer]:
+              - radio "جاي إن شاء الله" [ref=f1e136]
+              - generic [ref=f1e137]: جاي إن شاء الله
+            - generic [ref=f1e138] [cursor=pointer]:
+              - radio "لسه مش متأكد" [ref=f1e139]
+              - generic [ref=f1e140]: لسه مش متأكد
+            - generic [ref=f1e141] [cursor=pointer]:
+              - radio "مش هقدر" [ref=f1e142]
+              - generic [ref=f1e143]: مش هقدر
+          - generic [ref=f1e144]:
+            - generic [ref=f1e145]: حابب تقول حاجة؟ (اختياري)
+            - textbox "حابب تقول حاجة؟ (اختياري)" [ref=f1e146]
+          - button "ابعت الرد" [ref=f1e148] [cursor=pointer]
+      - region "يلا نلعب" [ref=f1e149]:
+        - heading "يلا نلعب" [level=2] [ref=f1e150]
+        - generic [ref=f1e151]:
+          - paragraph [ref=f1e152]: اكتب اسمك واختار فريقك. كل حاجة بتعملها هنا بتزوّد نقط فريقك.
+          - generic [ref=f1e153]:
+            - generic [ref=f1e154]: اسمك
+            - textbox "اسمك" [ref=f1e155]:
+              - /placeholder: زي ما الناس بتناديك
+          - group "فريقك" [ref=f1e156]:
+            - generic [ref=f1e158] [cursor=pointer]:
+              - radio "أهل العريس" [ref=f1e159]
+              - generic [ref=f1e160]: أهل العريس
+            - generic [ref=f1e161] [cursor=pointer]:
+              - radio "أهل العروسة" [ref=f1e162]
+              - generic [ref=f1e163]: أهل العروسة
+            - generic [ref=f1e164] [cursor=pointer]:
+              - radio "الأصحاب" [ref=f1e165]
+              - generic [ref=f1e166]: الأصحاب
+          - button "انضم" [ref=f1e168] [cursor=pointer]
+        - generic [ref=f1e169]:
+          - heading "النتيجة دلوقتي" [level=3] [ref=f1e170]
+          - list [ref=f1e171]:
+            - listitem [ref=f1e172]:
+              - generic [ref=f1e173]: أهل العريس
+              - generic [ref=f1e175]: "64"
+              - generic [ref=f1e176]: 9 لاعبين
+            - listitem [ref=f1e178]:
+              - generic [ref=f1e179]: أهل العروسة
+              - generic [ref=f1e181]: "58"
+              - generic [ref=f1e182]: 7 لاعبين
+            - listitem [ref=f1e184]:
+              - generic [ref=f1e185]: الأصحاب
+              - generic [ref=f1e187]: "37"
+              - generic [ref=f1e188]: 5 لاعبين
+        - paragraph [ref=f1e190]: انضم الأول عشان تلعب.
+    - contentinfo [ref=f1e191]:
+      - paragraph [ref=f1e194]:
+        - text: معمولة بـ
+        - link "لَمّة" [ref=f1e195] [cursor=pointer]:
+          - /url: /ar
+      - link "بلّغ عن الصفحة" [ref=f1e196] [cursor=pointer]:
+        - /url: /ar?report=e2e-wedding-798fed#contact
+  - button "Open Next.js Dev Tools" [ref=f1e202] [cursor=pointer]
+  - alert [ref=f1e206]
+```

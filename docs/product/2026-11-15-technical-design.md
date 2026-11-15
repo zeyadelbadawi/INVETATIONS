@@ -2,6 +2,8 @@
 
 Date: 2026-11-15. Revised after the independent plan review. Scope is exactly `2026-11-15-launch-scope.md`.
 
+> **Security amendments (2026-11-15):** `2026-11-15-security-requirements.md` is binding and overrides this document where they differ — in particular: opaque server-side guest sessions, link codes in the URL fragment, read-only RLS for hosts with all writes through server actions, the public / guest-only content split, photos pending by default, the hardened reveal, and the quarantine media pipeline.
+
 ## 1. Stack
 
 | Layer | Choice |
@@ -87,7 +89,7 @@ Every table: `id uuid`, `created_at`; RLS enabled; event-scoped tables carry `ev
 | `players` | `invitation_id`, `name`, `team_id`, `approved`, `rejoin_code_hash`, `team_switched_at` |
 | `rsvps` | `invitation_id` (+ `player_id` on group/open links), `status`, `adults`, `children`, `answers jsonb`, `updated_at` |
 | `teams` | `name_ar`, `name_en`, `color`, `join_mode` (pick, assigned) |
-| `games` | `kind` (quiz, vote, prediction, clues), `config jsonb`, `answer_key jsonb` (never selected by guest routes while open), `state` (hidden, open, closed, settled), `opens_at`, `closes_at`, `position` |
+| `games` | `kind` (quiz, vote, prediction, clues), `config jsonb` (no truth; truth lives in `game_secrets`), `state` (hidden, open, closed, settled), `opens_at`, `closes_at`, `position` |
 | `game_entries` | `game_id`, `player_id`, `payload jsonb`, `score`; unique (`game_id`, `player_id`) |
 | `score_events` | Append-only: `player_id`, `team_id` at the time, `points`, `reason`, `ref` |
 | `team_scores` | Materialised per team by the scoring job; read by the live endpoint |

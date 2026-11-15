@@ -121,7 +121,7 @@ Gender reveal uses Essential / Premium. All prices remain hypotheses to validate
 3. Invitations (a household or group) are separate from players (a person on a phone). A forwarded family link lets each family member join and play as themselves.
 4. Group links are first-class; personal links are the Premium path.
 5. "Link never expires" means the page. Guest media is kept 12 months, with download offered before removal. No guest video at launch.
-6. Moderation: uploads from invited guests appear immediately with report/remove; uploads from open-link guests wait for approval. A moderator role exists at launch. The henna private wall waits for Release 2.
+6. Moderation: guest photos wait for host or moderator approval on every link kind (changed by the security review); text and voice wishes from invited guests appear immediately with report/remove, and from open-link guests after approval. A moderator role exists at launch. The henna private wall waits for Release 2.
 7. Music at launch is a curated, licensed library only.
 8. Rosters show first names to joined players for weddings and reveals; off by default for corporate; hosts can switch it off anywhere. Hosts can also switch off sharing prompts (evil-eye sensitivity around pregnancy).
 9. Host sign-in is email + Google at launch; phone sign-in later.

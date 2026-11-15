@@ -146,10 +146,16 @@ suite("guest API over HTTP", () => {
   });
 
   it("the public shell is identical with and without the cookie and holds no guest-only content", async () => {
-    // The first render fills the cache and streams in a different order; compare cached responses.
-    await (await fetch(`${BASE}/i/${a.slug}/ar`)).text();
-    const plain = await (await fetch(`${BASE}/i/${a.slug}/ar`)).text();
-    const withCookie = await (await fetch(`${BASE}/i/${a.slug}/ar`, { headers: { cookie: cookie.header } })).text();
+    // The framework stamps each response with a random request key, and the first
+    // request for a new event streams in a different order while the cache fills.
+    // Compare settled responses with that key masked.
+    const get = async (headers?: Record<string, string>) =>
+      (await (await fetch(`${BASE}/i/${a.slug}/ar`, { headers })).text()).replace(/\b[A-Za-z0-9]{22}\b/g, "REQUEST_KEY");
+    await get();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const plain = await get();
+    expect(await get()).toBe(plain);
+    const withCookie = await get({ cookie: cookie.header });
     expect(plain.length).toBeGreaterThan(1000);
     expect(withCookie).toBe(plain);
     expect(plain).not.toContain(SENTINEL_ADDRESS);

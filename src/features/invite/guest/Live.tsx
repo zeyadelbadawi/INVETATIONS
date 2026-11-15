@@ -7,6 +7,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { apiGet, livePath } from "../lib/api";
 import type { LivePayload } from "../types";
+import { useInvite } from "./GuestContext";
 
 type LiveValue = { live: LivePayload | null; failing: boolean };
 const LiveContext = createContext<LiveValue>({ live: null, failing: false });
@@ -17,7 +18,12 @@ const IDLE_MS = 5000;
 const COUNTDOWN_MS = 1000;
 const MAX_BACKOFF_MS = 60_000;
 
-export function LiveProvider({ slug, enabled, demoLive, children }: { slug: string; enabled: boolean; demoLive?: LivePayload; children: ReactNode }) {
+export function LiveProvider({ demoLive, children }: { demoLive?: LivePayload; children: ReactNode }) {
+  const { event, status, demo } = useInvite();
+  const slug = event.slug;
+  // The reveal is public to the link; scores are only shown to guests with a session.
+  const closed = event.status === "cancelled" || event.status === "postponed";
+  const enabled = !demo && !closed && ((event.kind === "gender_reveal" && event.entitlements.reveal) || (event.entitlements.games && status === "ready"));
   const [value, setValue] = useState<LiveValue>({ live: null, failing: false });
   const phase = useRef<LivePayload["phase"]>("idle");
 

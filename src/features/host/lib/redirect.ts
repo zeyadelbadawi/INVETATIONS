@@ -10,7 +10,6 @@ export function safeNext(next: unknown, lang: Locale): string {
   if (!next.startsWith(fallback)) return fallback;
   const boundary = next.charAt(fallback.length);
   if (boundary !== "" && boundary !== "/" && boundary !== "?") return fallback;
-  // eslint-disable-next-line no-control-regex
   if (/[\\\u0000-\u001f\u007f]/.test(next)) return fallback;
   if (next.includes("//") || next.includes("..") || next.includes("#")) return fallback;
   try {

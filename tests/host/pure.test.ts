@@ -5,6 +5,7 @@ import { csvCell, toCsv } from "@/features/host/lib/csv";
 import { hashPasscode, verifyPasscode } from "@/features/host/lib/passcode";
 import { normalisePhone, slugBase } from "@/features/host/lib/text";
 import { isoToZoned, zonedToIso } from "@/features/host/lib/time";
+import { parseGuestLines } from "@/features/host/lib/bulk";
 
 describe("next redirect validation", () => {
   it("accepts relative paths inside the signed-in area of the same locale", () => {
@@ -114,5 +115,24 @@ describe("event time in a timezone", () => {
     expect(zonedToIso("2026-07-01T12:00", "America/New_York")).toBe("2026-07-01T16:00:00.000Z");
     expect(zonedToIso("not a date", "Africa/Cairo")).toBeNull();
     expect(isoToZoned(null, "Africa/Cairo")).toBe("");
+  });
+});
+
+describe("pasted guest list", () => {
+  it("reads name, phone and party size with Latin or Arabic separators", () => {
+    const parsed = parseGuestLines("Ahmed & family, 01001234567, 4\nمنى حسن، ٠١١١٢٣٤٥٦٧٨، ٢\n\nOmar\nHoda, 3", 50);
+    expect(parsed.badLines).toEqual([]);
+    expect(parsed.rows).toEqual([
+      { label: "Ahmed & family", phone: "+201001234567", size: 4 },
+      { label: "منى حسن", phone: "+201112345678", size: 2 },
+      { label: "Omar", phone: null, size: 1 },
+      { label: "Hoda", phone: null, size: 3 },
+    ]);
+  });
+
+  it("reports the lines it cannot read instead of guessing", () => {
+    const parsed = parseGuestLines("Good, 01001234567, 2\n, 01001234567, 2\nBad phone, 12345678901234567890, 2\nToo big, 01001234567, 99\nExtra, 01001234567, 2, more", 50);
+    expect(parsed.rows).toHaveLength(1);
+    expect(parsed.badLines).toEqual([2, 3, 4, 5]);
   });
 });

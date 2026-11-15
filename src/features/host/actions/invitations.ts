@@ -40,7 +40,8 @@ export async function regenerateInvitationAction(
   return run("regenerateInvitation", async () => {
     const actor = await requireEventAccess(eventId, "manage_invitations");
     const created = await invitations.regenerateInvitation(adminDb(), actor, eventId, invitationId);
-    return { created };
+    // Staff working under a grant never receive guests' phone numbers (security A3).
+    return { created: actor.kind === "staff" ? { ...created, phone: null } : created };
   });
 }
 

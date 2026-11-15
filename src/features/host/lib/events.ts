@@ -21,6 +21,8 @@ import { hashPasscode, PASSCODE_MAX_LENGTH, PASSCODE_MIN_LENGTH } from "./passco
 import { slugBase } from "./text";
 import { TIMEZONES, zonedToIso } from "./time";
 
+type JsonValue = NonNullable<Json>;
+
 const MAX_EVENTS_PER_HOST = 30;
 
 export const createEventSchema = z.object({
@@ -70,9 +72,9 @@ export async function createEvent(
         slug,
         template_id: template.id,
         template_version: template.version,
-        content: content as unknown as Json,
-        theme: { palette: template.palettes[0]?.id, fontPair: template.fontPairs[0]?.id } as Json,
-        settings: settingsSchema.parse({ rosterVisible: input.kind !== "corporate" }) as Json,
+        content: content as unknown as JsonValue,
+        theme: { palette: template.palettes[0]?.id, fontPair: template.fontPairs[0]?.id } as JsonValue,
+        settings: settingsSchema.parse({ rosterVisible: input.kind !== "corporate" }) as JsonValue,
         default_locale: input.locale,
       })
       .select("id, slug")
@@ -160,7 +162,7 @@ export async function saveDraft(
 
   const { data, error } = await db
     .from("events")
-    .update({ content: content.data as unknown as Json, theme: theme.data as Json })
+    .update({ content: content.data as unknown as JsonValue, theme: theme.data as JsonValue })
     .eq("id", event.id)
     .select("updated_at")
     .single();
@@ -233,7 +235,7 @@ export async function updateSettings(
       ends_at: endsAt,
       timezone: input.timezone,
       default_locale: input.defaultLocale,
-      settings: settings as Json,
+      settings: settings as JsonValue,
       ...passcode,
     })
     .eq("id", event.id);
@@ -293,7 +295,7 @@ export async function publishEvent(
   const { data: updated, error } = await db
     .from("events")
     .update({
-      published_content: { public: split.public, guest: split.guest, order: split.order } as unknown as Json,
+      published_content: { public: split.public, guest: split.guest, order: split.order } as unknown as JsonValue,
       published_version: version,
       status: "published",
     })

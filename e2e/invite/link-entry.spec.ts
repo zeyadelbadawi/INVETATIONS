@@ -28,7 +28,7 @@ test("a personal link opens the invitation, and the code is gone from the URL an
 
 test("a wrong code shows a friendly message and creates no session", async ({ page }) => {
   await page.goto(`/l/${event.slug}#AAAAAAAAAAAAAAAAAAAAAA`);
-  await expect(page.getByRole("alert")).toContainText("الرابط ده مش شغال");
+  await expect(page.locator("h1[role=alert]")).toContainText("الرابط ده مش شغال");
   expect(page.url()).not.toContain("AAAA");
   await page.screenshot({ path: shot("link-invalid-ar") });
   const status = await page.evaluate(async (slug) => (await fetch(`/api/guest/${slug}/me`)).status, event.slug);

@@ -1,5 +1,6 @@
 // Bundles the test page (client + server render) with the rolldown that ships with vitest's vite.
-// Usage: node e2e-fixtures/scene-test/build.mjs <outDir>
+// Usage: node e2e-fixtures/scene-test/build.mjs <outDir> [--dev]
+// --dev builds React in development mode, so StrictMode double-mounts effects as `next dev` does.
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -8,7 +9,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../..");
 const outDir = resolve(process.argv[2] ?? "");
-if (!process.argv[2]) throw new Error("Usage: build.mjs <outDir>");
+if (!process.argv[2]) throw new Error("Usage: build.mjs <outDir> [--dev]");
+const mode = process.argv.includes("--dev") ? "development" : "production";
 
 const require = createRequire(join(repo, "package.json"));
 const vitePath = require.resolve("vite", { paths: [dirname(require.resolve("vitest/package.json"))] });
@@ -19,7 +21,7 @@ mkdirSync(join(outDir, "public"), { recursive: true });
 
 const shared = {
   cwd: repo,
-  transform: { jsx: "react-jsx", define: { "process.env.NODE_ENV": '"production"' } },
+  transform: { jsx: "react-jsx", define: { "process.env.NODE_ENV": JSON.stringify(mode) } },
   onLog(level, log, handler) {
     if (log.code === "MODULE_LEVEL_DIRECTIVE") return;
     handler(level, log);

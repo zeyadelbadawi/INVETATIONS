@@ -3,6 +3,7 @@
 import "server-only";
 import { z } from "zod";
 import { requireEventAccess, requireStaff } from "@/lib/events/access";
+import { addStarterGames, saveGame, setGameState, setTruth, settleGame } from "@/features/control/games";
 import { removePlayer, renamePlayer, setPlayerApproved, setPostStatus, staffTakedown } from "@/features/control/lib";
 import { cancelReveal, issueKeeperLink, startReveal } from "@/lib/reveal/service";
 import { adminDb } from "@/lib/supabase/admin";
@@ -63,4 +64,38 @@ export async function abortReveal(eventId: string): Promise<boolean> {
 export async function takedownPost(postId: string): Promise<boolean> {
   const staff = await requireStaff(["admin", "support"]);
   return staffTakedown(staff.userId, id.parse(postId));
+}
+
+// --- Games -----------------------------------------------------------------
+
+
+const occasionOf = { wedding: "wedding", gender_reveal: "gender_reveal", corporate: "corporate" } as const;
+
+export async function seedGames(eventId: string) {
+  const actor = await requireEventAccess(id.parse(eventId), "manage_play");
+  const { data: event } = await adminDb().from("events").select("kind").eq("id", eventId).maybeSingle();
+  if (!event || !(event.kind in occasionOf)) return 0;
+  return addStarterGames(eventId, actor, occasionOf[event.kind as keyof typeof occasionOf]);
+}
+
+export async function upsertGame(eventId: string, input: { id?: string; kind: string; config: unknown }) {
+  const actor = await requireEventAccess(id.parse(eventId), "manage_play");
+  const parsed = z.object({ id: id.optional(), kind: z.string().max(20), config: z.unknown() }).parse(input);
+  return saveGame(eventId, actor, parsed);
+}
+
+// Correct answers are entered by the owner only; staff working on a grant never see or set them.
+export async function saveGameTruth(eventId: string, gameId: string, truth: unknown) {
+  await requireEventAccess(id.parse(eventId), "publish");
+  return setTruth(eventId, id.parse(gameId), truth);
+}
+
+export async function changeGameState(eventId: string, gameId: string, state: "hidden" | "open" | "closed") {
+  const actor = await requireEventAccess(id.parse(eventId), "manage_play");
+  return setGameState(eventId, actor, id.parse(gameId), z.enum(["hidden", "open", "closed"]).parse(state));
+}
+
+export async function settle(eventId: string, gameId: string) {
+  const actor = await requireEventAccess(id.parse(eventId), "publish");
+  return settleGame(eventId, actor, id.parse(gameId));
 }

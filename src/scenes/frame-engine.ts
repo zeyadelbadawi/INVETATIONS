@@ -131,6 +131,8 @@ export class FrameEngine {
       this.context.drawImage(bitmap, 0, 0);
       this.presentedIndex = pick;
       this.clearFirstFrameTimer();
+      // Arrived while far from the screen: nothing more will be asked for, so let go now.
+      if (!this.near && pick === this.target) this.release();
     }
     return this.presentedIndex;
   }

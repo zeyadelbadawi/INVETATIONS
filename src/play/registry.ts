@@ -19,6 +19,19 @@ export type Game = { [K in GameKind]: { kind: K; config: ConfigOf<K> } }[GameKin
 // Matches the size check on `games.config` in the database.
 export const MAX_CONFIG_BYTES = 60_000;
 
+// Postgres prints jsonb with a space after every ":" and ",", so the stored text
+// is longer than JSON.stringify's by one byte per separator.
+function separators(value: unknown): number {
+  if (value === null || typeof value !== "object") return 0;
+  const children = Object.values(value);
+  const own = Array.isArray(value) ? Math.max(0, children.length - 1) : Math.max(0, 2 * children.length - 1);
+  return children.reduce<number>((sum, child) => sum + separators(child), own);
+}
+
+export function storedBytes(config: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(config)).length + separators(config);
+}
+
 export const isGameKind = (kind: unknown): kind is GameKind => GAME_KINDS.includes(kind as GameKind);
 
 export function getModule<K extends GameKind>(kind: K): ModuleOf<K> {
@@ -35,7 +48,7 @@ export function parseGame(kind: unknown, config: unknown): ParsedGame {
   if (!isGameKind(kind)) return { ok: false, issues: ["unknown game kind"] };
   const parsed = modules[kind].configSchema.safeParse(config);
   if (!parsed.success) return { ok: false, issues: describe(parsed.error) };
-  if (new TextEncoder().encode(JSON.stringify(parsed.data)).length > MAX_CONFIG_BYTES) {
+  if (storedBytes(parsed.data) > MAX_CONFIG_BYTES) {
     return { ok: false, issues: ["the game is too large"] };
   }
   return { ok: true, game: { kind, config: parsed.data } as Game };

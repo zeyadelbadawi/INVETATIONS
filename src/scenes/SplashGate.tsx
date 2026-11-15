@@ -88,12 +88,9 @@ export function SplashGate({
       data-phase={gate.phase}
       className={className}
       style={panelStyle}
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(gate.progress * 100)}
     >
+      {/* Its own element: a progressbar's children are hidden from assistive technology, and the way out must not be. */}
+      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(gate.progress * 100)} />
       {children === undefined ? <DefaultSplash progress={gate.progress} /> : typeof children === "function" ? children(state) : children}
       {gate.canContinue ? (
         <button type="button" className={continueClassName} style={continueClassName ? undefined : continueStyle} onClick={gate.continueNow}>

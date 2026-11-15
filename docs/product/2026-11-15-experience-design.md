@@ -7,6 +7,8 @@ Evidence: [V] read on the vendor's page, [S] search snippet only. Rankings and b
 
 ---
 
+> **Scope note (2026-11-15):** launch contents are decided in `2026-11-15-launch-scope.md`. Where the priorities below differ, that document wins.
+
 ## 1. What the research says
 
 - **Nobody in Arabic does guest games.** Arabic results were only freelancers selling animated invitation pages. Arabic QR-invitation apps have no game layer.

@@ -7,6 +7,8 @@ Items marked **(my call)** are proposals made without your input — correct any
 
 ---
 
+> **Scope note (2026-11-15):** launch contents are decided in `2026-11-15-launch-scope.md`. Where the priorities below differ, that document wins.
+
 ## 1. What we are building
 
 A platform where anyone with an occasion gets one link that is the invitation, the event website, the guest manager, the event-day companion and the memory album. Sold two ways from the same product: the customer builds it (self-serve) or we build it for them (done-for-you).

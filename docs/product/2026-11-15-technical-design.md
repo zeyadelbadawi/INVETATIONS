@@ -1,166 +1,226 @@
-# Technical design — v1
+# Technical design — v1 (revision 2)
 
-Date: 2026-11-15. Status: draft, under review. Companion to the product plan and the experience design.
-Scope: the launch release (weddings, gender reveal, corporate). "Release 2" items are named only where they constrain v1.
+Date: 2026-11-15. Revised after the independent plan review. Scope is exactly `2026-11-15-launch-scope.md`.
 
 ## 1. Stack
 
 | Layer | Choice |
 |---|---|
-| App | Next.js 16 App Router, TypeScript strict, React Server Components |
-| Styling | Tailwind CSS 4, design tokens as CSS variables |
-| Motion | GSAP ScrollTrigger + Lenis, loaded after first paint; scene player per the playbook |
-| Data | Supabase: Postgres, Auth (hosts and staff only), Storage (guest uploads), Realtime (broadcast only) |
-| Scene media | Cloudflare R2 + CDN, revision folders; committed draft scenes for local/CI |
-| i18n | Arabic and English at equal weight, `ar` default, RTL-first; locale in the URL for platform pages, guest-switchable on invitations |
-| Validation | Zod on every server boundary |
-| Tests | Vitest (unit), Playwright (e2e) |
-| Package manager | pnpm |
-| Hosting | Vercel (assumed; nothing in the design depends on it) |
+| App | Next.js 16 App Router, TypeScript strict |
+| Styling | Tailwind CSS 4; every colour and font is a CSS-variable token |
+| Motion | GSAP ScrollTrigger + Lenis after first paint; scene player per the playbook |
+| Data | Supabase Postgres + Auth (hosts and staff only) + Storage |
+| Live | Short polling of a cacheable endpoint (§7). No WebSockets at launch |
+| Jobs | `jobs` table in Postgres, drained by a scheduled route (`/api/cron/jobs`, every minute) and after relevant writes |
+| Email | Transactional provider over SMTP for auth and receipts (provider to be chosen and verified; Supabase's built-in mailer is for development only) |
+| Scene media | Cloudflare R2 + CDN, revision folders; committed draft scenes for local and CI |
+| Guest media | Supabase Storage (private bucket) behind a `MediaStore` interface, so it can move to R2 without touching callers |
+| Rate limiting | Postgres-backed fixed-window counters behind a `RateLimiter` interface (swappable for Redis) |
+| i18n | `ar` and `en`, equal weight, RTL-first |
+| Validation | Zod at every server boundary |
+| Tests | Vitest, Playwright |
+| Monitoring | Error tracking and uptime checks (provider chosen at deploy time) |
+| Hosting | Vercel assumed; nothing depends on it |
 
-One Next.js app, one repo. No monorepo split until a second app exists.
-
-## 2. Surfaces and routes
+## 2. Routes
 
 | Surface | Routes | Who |
 |---|---|---|
 | Marketing | `/[locale]`, `/[locale]/pricing`, `/[locale]/templates` | Public |
 | Auth | `/[locale]/login`, `/[locale]/signup` | Hosts |
-| Dashboard | `/[locale]/app`, `/[locale]/app/events/[id]/{edit,guests,games,wall,settings}` | Hosts (signed in) |
-| Invitation | `/i/[slug]` (open link), `/i/[slug]/g/[token]` (personal link) | Guests, no account |
-| Secret keeper | `/k/[token]` | One trusted person per reveal |
-| Big screen | `/i/[slug]/screen?key=…` | Host's projector |
+| Dashboard | `/[locale]/app`, `/[locale]/app/events/[id]/{edit,invitations,play,wall,settings}` | Hosts |
+| Editor preview | `/preview/[eventId]` (iframe target, draft content over `postMessage`) | Signed-in host of that event |
+| Invitation | `/i/[slug]/[locale]` | Everyone with the link |
+| Link entry | `/l/[code]` → sets up the session, then redirects to the invitation | Guests |
+| Secret keeper | `/k/[code]` | One trusted person |
 | Back office | `/[locale]/admin/…` | Staff |
-| Guest API | `/api/guest/*` route handlers | Invitation pages |
-| Webhooks | `/api/webhooks/payments` | Payment gateway |
+| Guest API | `/api/guest/*` | Invitation pages |
+| Public live API | `/api/live/[slug]` | Invitation pages (cacheable) |
+| Webhooks | `/api/webhooks/payments` | Gateway |
+| Cron | `/api/cron/jobs` | Scheduler (shared-secret header) |
 
-## 3. Trust model
+## 3. Caching and personalisation
 
-Three kinds of actor; the design keeps them apart.
+- `/i/[slug]/[locale]` is the same HTML for every visitor of that event, locale and published version, so it is cacheable. It contains nothing personal.
+- Personalisation arrives after load from `GET /api/guest/me` (session cookie): the guest's display name, their invitation, their player, their team. The name on the opening is filled into a reserved slot.
+- Locale order when a guest arrives through `/l/[code]`: invitation's locale → `Accept-Language` → event default. The switcher is a plain link to the other locale's URL.
+- If the host filled only one language, the other falls back to it and the switcher is hidden.
+- Dates show event-local time (`Africa/Cairo` by default, stored as an IANA zone) and, when the viewer's zone differs, their local time underneath. Calendar files carry the TZID.
+- Passcode-protected events: the passcode gate is part of the cached shell; content is fetched after the passcode is accepted. Link-preview metadata (title, image chosen by the host) is always served.
 
-- **Hosts** sign in with Supabase Auth (email + password, Google). They reach their own rows through row-level security with their own session. Co-hosts are rows in `event_members`.
-- **Staff** are hosts with a role in `staff_roles`; back-office actions run on the server after a role check, and every one is written to `audit_log`. Done-for-you work happens through a staff "act on event" grant recorded per event, not by sharing the customer's password.
-- **Guests have no account and never talk to the database.** The anonymous database role has no table access at all. Every guest read and write goes through `/api/guest/*` on the server, which:
-  1. resolves the guest from a signed, http-only session cookie (set when a personal link or an open-link name entry is first used);
-  2. validates the body with Zod;
-  3. checks the event's state and the game's rules;
-  4. rate-limits by guest, by event and by IP;
-  5. performs the write with the server-side service key.
+## 4. Trust model
 
-  The service key exists only in server code and is never imported into a client bundle (enforced with `server-only` and a build check).
+**Hosts** sign in with Supabase Auth (email + password, Google). They reach rows through RLS. The moderator role is an `event_members` row with `role = 'moderator'` (can hide wall posts, nothing else).
 
-**Guest tokens.** A personal link carries a random 128-bit token. Only its SHA-256 hash is stored. Tokens can be revoked and regenerated by the host. Invitation pages are `noindex` and sent with `Referrer-Policy: no-referrer` so tokens don't leak to third parties.
+**Staff** have a row in `staff_roles`. Back-office actions run on the server after a role check and are written to `audit_log`. Done-for-you: staff create the event on the customer's behalf (or the customer creates it and requests the service), and a row in `staff_grants (event_id, staff_id, expires_at)` lets that staff member edit that event through the same server actions hosts use; the grant is created from the back office by an admin, expires after 14 days, and is audited. If the customer has no account yet, the event is owned by a holding account and transferred through a single-use claim link.
 
-**Open links.** If the host allows walk-ins, `/i/[slug]` asks for a name and creates a guest with `source = 'open'`; the host can require approval before that guest counts toward teams or uploads.
+**Guests have no account and never reach the database.** The `anon` role has no table privileges. Everything goes through server routes, which resolve the session, validate with Zod, check event state and entitlements, rate-limit, then write with the service key (server-only module, never bundled for the client).
 
-## 4. Data model (v1)
+### Invitations, players and sessions
 
-All tables have `id uuid`, `created_at`, and RLS enabled. `event_id` is on every event-scoped table and is what policies key on.
+- An **invitation** is a party the host invited: a household ("Ahmed & family", pax 4), a group ("bride's university friends"), or the open link. It owns the RSVP.
+- A **player** is one person on one device who joined the fun: a name, a team, entries, points. Players are created on join and belong to an invitation.
+- Link kinds, all carried as `/l/[code]`:
+  - **Personal** — one household; shows the name; RSVP answers for the party; any number of household members up to `pax_cap` can each join as a player.
+  - **Group** — many people; each enters a name to join; RSVP is per player; capped by a host-set limit.
+  - **Open** — the event's general link; like a group link but players wait for host approval before uploads appear or points count, if the host turns approval on.
+- `code` is random (128 bits, base62). Only its SHA-256 is stored. The host can revoke and reissue.
+- `/l/[code]` is a route handler: it never renders content. On `GET` it returns a tiny page that immediately `POST`s to `/api/guest/session` (so link-preview crawlers, which don't run it, never create sessions or count as opens), which sets a signed, http-only, `SameSite=Lax` cookie scoped to that event and redirects to `/i/[slug]/[locale]`. The code therefore never stays in the address bar or in a shareable URL.
+- Share cards and "invite others" use the event's **open or group join link**, never a personal code.
+- A player who changes browser (in-app browser → Chrome) can re-claim their player by opening their link again and choosing their name; personal links allow it directly, group/open links require the 4-digit rejoin code shown when they first joined.
+- "Opened" is recorded on session creation, never on `GET`.
 
-| Table | Purpose | Notes |
-|---|---|---|
-| `profiles` | Host profile, locale | 1:1 with `auth.users` |
-| `staff_roles` | `support`, `designer`, `admin` | Read by server only |
-| `events` | One occasion | `owner_id`, `kind` (wedding, gender_reveal, corporate), `slug` unique, `status` (draft, published, live, ended, archived), `template_id`, `content jsonb`, `theme jsonb`, `settings jsonb`, `starts_at`, `timezone`, `plan`, `published_at` |
-| `event_members` | Co-hosts | `role` (owner, editor, viewer) |
-| `event_functions` | Sub-events (henna, katb kitab, wedding) | Release 2 for per-guest visibility; table exists in v1 with one row |
-| `templates` | Scene pack + overlay schema + block list + palettes | Staff-managed; public read of published rows |
-| `guests` | Guest list | `name`, `phone` (optional), `group`, `side`, `team_id`, `pax_cap`, `token_hash`, `source`, `approved`, `locale`, `opened_at` |
-| `rsvps` | Answer per guest (per function later) | `status`, `adults`, `children`, `answers jsonb` |
-| `teams` | Sides / teams / houses | `name_ar`, `name_en`, `color`, `kind` |
-| `games` | Game instance on an event | `kind` (quiz, this_or_that, prediction, poll, guess_photo, song_requests, name_vote, clues, tap_battle, draw), `config jsonb`, `state` (hidden, open, closed, settled), `opens_at`, `closes_at` |
-| `game_entries` | One guest's submission | `payload jsonb`, `score`, unique (`game_id`, `guest_id`) where the game allows one entry |
-| `score_events` | Append-only points ledger | Team totals are derived, never stored as a counter the client can touch |
-| `wall_posts` | Greetings, advice, voice, photo, video | `kind`, `text`, `media_path`, `status` (pending, approved, rejected), `visibility` |
-| `reveals` | Gender-reveal secret | See §6. No client-readable column holds the answer |
-| `live_state` | Current live moment per event | `phase`, `payload jsonb`, `updated_at`; public-safe by construction |
-| `orders`, `payments` | Purchases | `provider`, `provider_ref`, `amount_egp`, `status`; manual receipts go to private storage |
-| `audit_log` | Staff and sensitive host actions | Append-only |
+## 5. Data model
 
-**RLS shape.**
-- `anon`: no policies on any table.
-- `authenticated`: select/insert/update/delete on event-scoped rows only when `is_event_member(event_id)`; `templates` read where `published`; own `profiles` row.
-- `reveals`, `staff_roles`, `audit_log`, `payments`: no `authenticated` policies; server only.
-- Storage: guest media bucket is private; uploads use short-lived signed upload URLs issued by the guest API; reads use signed URLs issued after a moderation check.
+Every table: `id uuid`, `created_at`; RLS enabled; event-scoped tables carry `event_id`.
 
-## 5. Templates and the editor
+| Table | Purpose / key columns |
+|---|---|
+| `profiles` | Host profile, locale |
+| `staff_roles` | `support`, `designer`, `admin` |
+| `staff_grants` | Time-boxed staff access to one event |
+| `events` | `owner_id`, `kind`, `slug`, `status` (draft, published, postponed, cancelled, ended, archived), `template_id`, `template_version`, `content jsonb` (draft), `published_content jsonb`, `published_version int`, `theme jsonb`, `settings jsonb`, `starts_at`, `ends_at`, `timezone`, `plan_id`, `passcode_hash` |
+| `event_members` | `role` (owner, moderator) |
+| `plans` | Price, entitlements jsonb (`max_guests`, `games`, `personal_links`, `voice`, `photos`, `reveal`, `watermark`) |
+| `templates` | Versioned template data (§6); staff-managed |
+| `invitations` | `label`, `kind` (personal, group, open), `side`, `pax_cap`, `phone`, `code_hash`, `locale`, `opened_at`, `revoked_at` |
+| `players` | `invitation_id`, `name`, `team_id`, `approved`, `rejoin_code_hash`, `team_switched_at` |
+| `rsvps` | `invitation_id` (+ `player_id` on group/open links), `status`, `adults`, `children`, `answers jsonb`, `updated_at` |
+| `teams` | `name_ar`, `name_en`, `color`, `join_mode` (pick, assigned) |
+| `games` | `kind` (quiz, vote, prediction, clues), `config jsonb`, `answer_key jsonb` (never selected by guest routes while open), `state` (hidden, open, closed, settled), `opens_at`, `closes_at`, `position` |
+| `game_entries` | `game_id`, `player_id`, `payload jsonb`, `score`; unique (`game_id`, `player_id`) |
+| `score_events` | Append-only: `player_id`, `team_id` at the time, `points`, `reason`, `ref` |
+| `team_scores` | Materialised per team by the scoring job; read by the live endpoint |
+| `wall_posts` | `player_id`, `kind` (text, voice, photo), `text`, `media_id`, `status` (visible, pending, hidden), `reported_count` |
+| `media` | `path`, `mime`, `bytes`, `width`, `height`, `duration`, `state` (uploaded, processed, rejected) |
+| `reveals` | `keeper_code_hash`, `sealed_at`, `answer_ciphertext`, `reveal_at`, `revealed_at`, `style` |
+| `live_state` | `phase`, `public_payload jsonb`, `version int` |
+| `orders`, `payments` | `plan_id`, `amount_egp` (server-computed), `provider`, `provider_ref` unique, `status`, `receipt_media_id` |
+| `jobs` | `kind`, `payload`, `run_at`, `attempts`, `state` |
+| `rate_limits` | `key`, `window_start`, `count` |
+| `audit_log` | Append-only: actor, action, target, metadata |
 
-A template is data, so new templates need no renderer changes:
+**RLS.**
+- `anon`: nothing.
+- `authenticated`: event-scoped rows where `is_event_owner(event_id)`; moderators get `select` on `wall_posts`/`players` and `update(status)` on `wall_posts` only; `templates` and `plans` read where published; own `profiles`.
+- No `authenticated` policies on `reveals`, `staff_roles`, `staff_grants`, `payments`, `jobs`, `rate_limits`, `audit_log`, or the `answer_key` column (kept in a separate `game_secrets` table so column-level leaks are impossible).
+- Host-side writes that must respect entitlements (publish, add invitations beyond the cap, enable a game) go through server actions, not direct table writes; RLS allows only the safe columns to be edited directly.
+
+**Lifecycle.** Hosts publish, postpone and cancel. A job moves `published → ended` 24 hours after `ends_at`. Postponed and cancelled events show a calm notice and close RSVP and games. RSVP can be edited until the host's deadline; `adults + children` cannot exceed `pax_cap`.
+
+## 6. Templates and the editor
 
 ```ts
 type Template = {
-  id: string; kind: EventKind; name: { ar: string; en: string };
-  scenes: { id: string; rev: number; scrollVh: number; holdVh: number; leadVh?: number }[];
-  overlays: OverlaySlot[];   // where each field sits: scene, range on --seq-progress / --seq-hold, position in % of the frame, text style token
-  blocks: BlockType[];       // sections available below the scenes, with defaults
-  palettes: Palette[];       // named token sets the customer chooses from
-  fonts: { ar: string; en: string }[];
+  id: string; version: number; kind: EventKind;
+  name: { ar: string; en: string };
+  scenes: { id: string; rev: number; scrollVh: number; holdVh: number; leadVh?: number; gate: boolean }[];
+  fields: FieldDef[];          // key, type (text | date | image | choice), label, maxLength, required, perLocale
+  overlays: OverlaySlot[];     // field, scene, progress range, final-state style
+                               // position + size per variant ("desktop" 16:9, "mobile" 4:5) and per direction (rtl, ltr)
+                               // fit: { maxLines, minScale } so long Arabic names shrink instead of overflowing
+                               // wash: optional dark wash behind the text
+  splash: { kind: "initials" | "logo"; animation: "mask-reveal" };
+  blocks: BlockDef[];          // type, default on/off, default order
+  palettes: Palette[];         // tokens for overlays, blocks and splash — footage is not recoloured
+  fontPairs: { ar: string; en: string }[];
+  music: string[];             // ids from the curated library
+  reveal?: { neutral: true; styles: ("balloon" | "scratch")[] };
 };
 ```
 
-- `events.content` holds the customer's values for the template's fields and blocks, per locale: `{ ar: {...}, en: {...}, shared: {...} }`.
-- The editor is a form-driven panel beside a live phone preview that renders the real invitation component with unsaved state. Customers edit text, pick a palette and font pair, fill photo slots, toggle and reorder blocks, pick and trim music. They do not move footage or free-position elements.
-- All customer text is rendered as text. No customer-supplied HTML, CSS or script anywhere; links are validated against an allowlist of schemes (`https`, `tel`, `mailto`) and map links against known map hosts.
-- Publishing snapshots `content` into `published_content` so drafts never leak to guests.
+- A published event pins `template_id` + `template_version`; template updates never change a live invitation.
+- `events.content` holds draft values; **Publish** validates against `fields`, checks entitlement and payment, then copies to `published_content` and bumps `published_version`. Editing after publish changes only the draft until the host republishes. The slug is fixed once published.
+- The editor is a form panel beside an iframe of `/preview/[eventId]`, which renders the real invitation component and receives the draft over `postMessage` (origin-checked). The iframe owns its own scroll, `lvh` and splash, so the player behaves as it will for guests.
+- Customers edit text, choose a palette and font pair, fill photo slots, toggle and reorder blocks, and pick music. Nothing else.
+- All customer text is rendered as text. No customer HTML, CSS or script. Links: `https`, `tel`, `mailto` only; map links must be on known map hosts.
+- The splash monogram is the initials (or company logo) revealed with a mask animation — no per-letter path drawing.
+- The free tier's preview link works only for the signed-in host and carries a watermark.
 
-## 6. Play engine
+## 7. Play engine
 
-- **Scores.** Every scoring action inserts a `score_events` row on the server. Team score = average points per active member (members with at least one action), computed in a SQL view and cached per event for a few seconds.
-- **Games** are modules with a common contract: `validateEntry(config, payload)`, `score(config, payload, truth?)`, `publicState(config, state)`. Question banks for each occasion ship as data in Arabic and English; hosts pick from them or write their own.
-- **Answer keys never leave the server** while a game is open. `publicState` strips them; scoring happens server-side on submit or at settle time.
-- **Live moments.** `live_state` holds the current phase. When a host triggers a moment, the server updates the row and sends a Supabase Realtime **broadcast** on the event's channel. Clients subscribe with the public key to a channel that only the server can send on; payloads contain nothing private. Clients also poll `GET /api/guest/live` every few seconds as a fallback, so the feature works where WebSockets are blocked.
-- **Synchronised reveal.**
-  1. The secret keeper opens `/k/[token]` (single-use, hashed token, expires at the reveal time) and submits the answer. It is stored encrypted with a server-held key in `reveals`; parents and staff UI show only "sealed".
-  2. The host schedules or triggers the reveal. The server sets `reveal_at` (a server timestamp a few seconds ahead) and broadcasts it. Clients run the countdown against server time (offset measured from the API's `Date` header).
-  3. The answer is released only by `GET /api/guest/reveal`, which returns it if and only if `now() >= reveal_at`. Clients call it at zero; the server also broadcasts the answer at zero. Before zero the answer is in no page payload, API response, URL, share image or cache.
-  4. After the reveal the result is ordinary event content, so late openers see it.
-- **Share cards** are rendered on the server (`next/og`) from names and scores only; never from photos or private data. Card URLs are signed so they can't be enumerated.
-- **Big screen** reads the same public live state and approved wall posts, behind a per-event key.
+**Modules at launch:** quiz (text and image questions), vote (this-or-that, poll), prediction, clues. Each implements:
 
-## 7. Scenes
+```ts
+interface GameModule<Config, Entry, Truth> {
+  configSchema: ZodType<Config>; entrySchema: ZodType<Entry>;
+  publicConfig(config: Config): unknown;            // strips anything secret
+  scoreOnSubmit?(config: Config, entry: Entry, truth: Truth): number;   // quiz
+  scoreOnSettle?(config: Config, entry: Entry, truth: Truth): number;   // prediction
+  tally(config: Config, entries: Entry[]): unknown; // public aggregate
+}
+```
 
-Built exactly as the playbook describes: sticky `lvh` stage, WebCodecs engine with video-element fallback, walk, splash gate from an inline boot script, device tiers, still version, manifests with timing curves and decode index.
+- Answer keys live in `game_secrets` and are read only inside scoring code on the server.
+- Question banks ship as data in both languages; hosts pick from them or write their own.
+- Timed quizzes have an untimed setting (accessibility; older guests).
 
-Adaptations for this product:
-- The splash is the event's monogram; its colours come from the event palette.
-- Overlay slots come from the template; values come from `published_content`.
-- Until real footage is approved and generated, development and CI use a synthetic draft scene built with ffmpeg and encoded through the same pipeline.
-- Footage generation follows the playbook's approval gates: scene plan first, cost announced before every job.
+**Scoring.** Every scoring action inserts a `score_events` row. Team score = the average of the team's top *N* players, where *N* = the smallest team's active-player count, clamped to 3–15. This keeps big families from winning on size and stops casual joiners from dragging a team down. A job recomputes `team_scores` after writes (debounced to once per few seconds per event). Points earned stay with the team the player was on at the time. In the reveal's clue game a player may switch team once, before the countdown starts.
 
-## 8. Payments
+**Teams.** Weddings: groom's side, bride's side, friends — pre-filled from the invitation's `side`, changeable by the player unless the host locks it. Gender reveal: player picks. Corporate: host assigns by invitation group (department) or the server deals players into balanced houses.
 
-- A `PaymentProvider` interface with two implementations in v1:
-  - **Manual transfer** (InstaPay / wallet): customer uploads a receipt; staff approve in the back office; approval is audited.
-  - **Gateway** (Paymob is the working assumption): hosted checkout, server-to-server webhook verified by HMAC, idempotent by `provider_ref`. Built behind a flag and finished when merchant credentials exist.
-- Prices and plans live in the database, not in client code. The amount charged is computed on the server from the plan id.
-- An event becomes publishable when a `payments` row for it is `paid`. The client never tells the server that it paid.
+**Live.** `GET /api/live/[slug]` returns `{ version, phase, serverNow, revealAt?, scores, tallies }` — public-safe by construction, no cookies, cached at the CDN for 2 seconds per event, so a 500-guest hall costs about one origin request every two seconds. Clients poll every 5 seconds normally and every second inside a countdown. `serverNow` in milliseconds comes from a separate uncached `GET /api/time`, corrected for round-trip, to align countdowns.
 
-## 9. Privacy and data
+**Synchronised reveal.**
+1. The host creates the keeper link. The keeper opens `/k/[code]` and submits the answer. It is stored as ciphertext (AES-256-GCM, key in server environment). The keeper may correct it until the countdown starts; each seal is audited. Hosts and staff see only "sealed".
+2. The host starts the reveal. The server sets `reveal_at = now() + lead` with a **minimum lead of 60 seconds** (the countdown lobby), so every polling client learns it in time. The host can cancel during the lobby. If nothing is sealed, the reveal cannot start.
+3. The answer is released only by `GET /api/guest/reveal`, which returns it if and only if `now() >= reveal_at`; otherwise it returns the milliseconds remaining and the client retries with jitter. At zero the server also decrypts once and moves the result into `published_content`, bumping the version (which purges the cached page).
+4. Footage is answer-neutral. The colour is drawn in HTML/canvas after step 3. Before zero the answer is in no page, API response, URL, image, file name or cache key.
+5. Twins: the answer is a list. Postpone/cancel: the host can close the event quietly at any point; predictions close with it.
 
-- Guest data collected: name, optional phone, RSVP answers, game entries, optional media. Nothing else.
-- Per-event isolation by RLS and by the guest API always scoping to the session's `event_id`.
-- Hosts can export and delete an event; deletion removes guest rows and media.
-- Guest uploads: image/audio/video types only, verified by content sniffing on the server, size-capped, EXIF stripped from images, pending until the host approves (default).
-- Home/venue details shown on personal links follow the host's setting (everyone / approved guests only).
+**Share cards.** Drawn on the client in a `<canvas>` (the browser shapes Arabic correctly), exported as PNG and shared with the Web Share API (image + text + join link), with "save image" and "copy link" as fallbacks. Cards contain first name, team and score only. Hosts can switch sharing off per event.
 
-## 10. Performance budgets
+**Recap.** A section of the invitation that appears when the event ends: final scores, winners, wall highlights.
 
-- Invitation page: initial JS ≤ 180 KB; first scene poster is the LCP image; scene code, GSAP and Lenis load after the page.
-- Per invitation on a phone: at most 3 scenes, about 3 MB each.
-- Guest API p95 under 300 ms for reads; writes are single-row inserts.
+## 8. Scenes
 
-## 11. Build order
+As in the playbook — sticky `lvh` stage, WebCodecs engine with video fallback, walk, device tiers, still version, manifests with timing and decode index, inline boot script — with the deviation recorded in the launch scope: only scenes marked `gate: true` (the first) hold the splash; later scenes show posters until ready; a "Details / RSVP" button is always visible.
 
-| Phase | Outcome |
-|---|---|
-| 0 Foundation | Repo, tokens and brand config, i18n and RTL, Supabase schema + RLS + tests, auth, CI |
-| 1 Invitation core | Template contract, invitation renderer with blocks, scene player with a draft scene, splash gate, still version |
-| 2 Hosts | Dashboard, editor with live preview, guest list and import, personal links, one-tap WhatsApp sending, RSVP, publish flow |
-| 3 Play engine | Teams, points, games contract, quiz / this-or-that / predictions / polls / guess-photo / song requests / names / clues, share cards, recap |
-| 4 Live | Live state, realtime + polling, synchronised reveal with secret keeper, reveal styles, big screen |
-| 5 Occasion packs | Wedding, gender reveal and corporate content packs, question banks, corporate blocks (agenda, speakers, entry pass), award voting, private draw |
-| 6 Business | Plans, manual payment + back office, gateway adapter, done-for-you desk, marketing site, attribution and referral |
-| 7 Footage | Scene plans, generation (approval gates), encoding, upload, template assembly |
-| 8 Hardening | e2e suite, real-device checks, accessibility, performance, security review of the code |
+- **Phase 0 includes a device spike**: the player on real mid-range Android and iPhone inside WhatsApp's, Instagram's and Facebook's in-app browsers, checking WebCodecs, memory, cookies, Web Share and microphone recording. Results decide the tier rules before any template is built.
+- One real template is built end to end before the editor is finalised. Development and CI use a synthetic draft scene through the same encoder until then.
+- Footage generation follows the playbook's approval gates.
 
-Phase 7 runs in parallel with 2–6 once the scene plans are approved; everything else is sequential.
+## 9. Media
+
+- Images are downscaled in the browser before upload (long edge 1600 px, JPEG/WebP, ~400 KB) which also drops EXIF. Voice notes are capped at 60 seconds.
+- Upload flow: guest API issues a short-lived signed upload URL for a server-chosen path → client uploads → client calls `complete` → a job verifies the real type from the bytes, re-encodes images, records dimensions/duration and flips `media.state`. Unverified media is never served.
+- Reads use signed URLs issued by the server after the visibility check.
+- Quotas per plan (per player and per event). Retention: guest media 12 months after the event, with a download offered first; the page stays.
+- No guest video at launch. Voice is stored as recorded (webm/opus or mp4/aac) and played with a format the device supports; transcoding is deferred.
+
+## 10. Payments and entitlements
+
+- `plans.entitlements` is the only source of what an event may do; every gated server action checks it.
+- The amount is computed on the server from `plan_id`. The client never states a price or that it paid.
+- Manual transfer: receipt uploaded to private storage → staff approve in the back office (audited) → `payments.status = 'paid'`.
+- Gateway (working assumption: Paymob): hosted checkout; webhook verified by HMAC, idempotent on `provider_ref`. Built behind a flag; finished when credentials exist.
+- Publishing requires a paid plan. Before paying, the host has the watermarked private preview and can send themselves a test link that works only while they are signed in.
+
+## 11. Operations
+
+- Moderation: reported posts go to the moderator and, past a threshold, hide automatically. Staff can take down anything from the back office.
+- Backups: database point-in-time recovery on the hosted project; storage objects and scene masters copied to a second bucket on a schedule.
+- Load test before launch: 500 simulated guests on one event through a reveal.
+- Support channel is WhatsApp; back office keeps notes per event.
+
+## 12. Performance budgets
+
+- Invitation: initial JS ≤ 180 KB; poster is the LCP image; one gating scene of about 3 MB on phones.
+- Live endpoint: CDN-cached; origin cost independent of audience size.
+- Guest API writes are single-row inserts plus a ledger row.
+
+## 13. Phases
+
+| # | Phase | Outcome |
+|---|---|---|
+| 0 | Foundation | Repo, tooling, CI, tokens + brand config, i18n + RTL, local Supabase, schema + RLS + policy tests, auth, plans/entitlements seed, rate limiter, jobs runner |
+| 1 | Invitation core | Template contract, invitation shell (cached) + `/api/guest/me`, link entry and sessions, blocks, scene player with a draft scene, splash, still version, device-spike build |
+| 2 | Hosts | Dashboard, event creation, editor with iframe preview, invitations (add/import/links), WhatsApp sending, RSVP, publish with entitlements, manual payment + back-office approval |
+| 3 | Play | Players and join, teams, ledger + scoring job, quiz / vote / prediction / clues, wishes wall (text, voice, photo) with moderation, share cards, recap |
+| 4 | Live | Live endpoint + time sync, reveal with secret keeper, two reveal styles, winner cards |
+| 5 | Occasion packs | Wedding, gender-reveal and corporate packs: blocks, team presets, question banks (ar/en), corporate teasers, award voting |
+| 6 | Business | Marketing site, pricing, done-for-you desk and staff grants, gateway adapter behind a flag, attribution |
+| 7 | Footage | Scene plans ⛔, generation ⛔, encoding, upload, four templates |
+| 8 | Hardening | e2e suite, load test, accessibility pass, performance pass, code security review, real-device checks |
+
+Accessibility is part of every phase, not only 8. Phase 7 runs alongside 2–6 once scene plans are approved.

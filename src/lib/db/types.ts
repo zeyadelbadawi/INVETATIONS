@@ -662,10 +662,19 @@ isOneToOne: false
 "recompute_team_scores":
 { Args: { "p_event_id": string }; Returns: undefined
                            },
+"reveal_cancel":
+{ Args: { "p_event_id": string }; Returns: boolean
+                           },
 "reveal_release":
 { Args: { "p_event_id": string }; Returns: {
               "ciphertext": string,"id": string,"key_version": number,"nonce": string
             }[]
+                           },
+"reveal_start":
+{ Args: { "p_event_id": string,"p_lead_seconds": number }; Returns: string
+                           },
+"server_now":
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "settle_order":
 { Args: { "p_amount_egp": number,"p_approved_by": string,"p_order_id": string,"p_provider": string,"p_provider_ref": string,"p_receipt_media_id": string }; Returns: boolean

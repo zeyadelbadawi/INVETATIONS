@@ -31,10 +31,21 @@ export class AccessError extends Error {
 // Verified identity of the signed-in host (claims are verified by the auth server
 // or by signature, never taken from the cookie as-is).
 export async function currentUserId(): Promise<string | null> {
+  return (await currentClaims())?.sub ?? null;
+}
+
+async function currentClaims(): Promise<{ sub: string; aal: unknown } | null> {
   const db = await hostDb();
   const { data } = await db.auth.getClaims();
   const sub = data?.claims?.sub;
-  return typeof sub === "string" ? sub : null;
+  return typeof sub === "string" ? { sub, aal: data?.claims?.aal } : null;
+}
+
+// Staff acting on a customer's event must have passed their second factor
+// (security O1). The development switch is never honoured in production.
+function staffSecondFactorOk(aal: unknown): boolean {
+  if (aal === "aal2") return true;
+  return process.env.NODE_ENV !== "production" && process.env.STAFF_MFA_OPTIONAL === "1";
 }
 
 export async function requireUser(): Promise<string> {
@@ -44,7 +55,9 @@ export async function requireUser(): Promise<string> {
 }
 
 export async function requireEventAccess(eventId: string, capability: Capability): Promise<Actor> {
-  const userId = await requireUser();
+  const claims = await currentClaims();
+  if (!claims) throw new AccessError("unauthenticated");
+  const userId = claims.sub;
   const db = adminDb();
 
   const { data: event } = await db.from("events").select("owner_id").eq("id", eventId).maybeSingle();
@@ -73,7 +86,7 @@ export async function requireEventAccess(eventId: string, capability: Capability
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (grant && grant.capabilities.includes(capability)) {
+    if (grant && grant.capabilities.includes(capability) && staffSecondFactorOk(claims.aal)) {
       return { userId, kind: "staff", grantId: grant.id };
     }
   }

@@ -8,6 +8,8 @@ import { EventTabs } from "@/features/host/components/event-tabs";
 import { eventName } from "@/features/host/lib/display";
 import { eventForPage } from "@/features/host/lib/page";
 import { hostMessages } from "@/features/host/messages";
+import { pendingStaffAccessNotice } from "@/features/admin/lib/grants";
+import { staffAccessMessages } from "@/features/host/messages-staff";
 
 type Params = LayoutProps<"/[lang]/app/events/[id]">["params"];
 
@@ -17,7 +19,9 @@ async function EventHeader({ params }: { params: Params }) {
   const { lang, id } = await params;
   if (!isLocale(lang)) notFound();
   const t = hostMessages(lang);
-  const { event } = await eventForPage(lang, id, "view", "edit");
+  const { event, actor } = await eventForPage(lang, id, "view", "edit");
+  // The owner always sees when our staff can open this event (security A3).
+  const staffAccess = actor.kind === "owner" ? await pendingStaffAccessNotice(event.id) : [];
   const status = event.status as keyof typeof t.statuses;
   return (
     <div className="flex flex-col gap-3">
@@ -32,6 +36,16 @@ async function EventHeader({ params }: { params: Params }) {
           </Badge>
         </div>
       </div>
+      {staffAccess.length > 0 ? (
+        <p role="status" className="rounded-xl border border-highlight/60 bg-highlight/15 px-4 py-3 text-sm">
+          {staffAccessMessages(lang).notice.replace(
+            "{date}",
+            new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { dateStyle: "medium" }).format(
+              new Date(Math.max(...staffAccess.map((g) => new Date(g.expiresAt).getTime()))),
+            ),
+          )}
+        </p>
+      ) : null}
       <EventTabs lang={lang} eventId={event.id} />
     </div>
   );

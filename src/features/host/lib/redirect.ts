@@ -7,6 +7,9 @@ import type { Locale } from "@/i18n/config";
 export function safeNext(next: unknown, lang: Locale): string {
   const fallback = `/${lang}/app`;
   if (typeof next !== "string" || next.length === 0 || next.length > 512) return fallback;
+  // The claim page is the one other place a customer is sent back to after signing in.
+  const claim = `/${lang}/claim`;
+  if (next === claim) return claim;
   if (!next.startsWith(fallback)) return fallback;
   const boundary = next.charAt(fallback.length);
   if (boundary !== "" && boundary !== "/" && boundary !== "?") return fallback;

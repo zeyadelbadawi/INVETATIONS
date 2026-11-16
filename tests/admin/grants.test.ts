@@ -2,13 +2,13 @@
 // time, enforced by the real requireEventAccess.
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-const session = vi.hoisted(() => ({ userId: null as string | null }));
+const session = vi.hoisted(() => ({ userId: null as string | null, aal: "aal2" as string }));
 vi.mock("server-only", () => ({}));
 // requireEventAccess reads the signed-in user from the verified token; here the
 // token is whoever the test says is signed in.
 vi.mock("@/lib/supabase/server", () => ({
   hostDb: async () => ({
-    auth: { getClaims: async () => ({ data: session.userId ? { claims: { sub: session.userId, aal: "aal2" } } : null }) },
+    auth: { getClaims: async () => ({ data: session.userId ? { claims: { sub: session.userId, aal: session.aal } } : null }) },
   }),
 }));
 
@@ -79,6 +79,24 @@ describe("staff grants", () => {
     expect(await as(support.id, event.id, "view")).toBe("forbidden");
     const other = await makeEvent(owner.id);
     expect(await as(designer.id, other.id, "view")).toBe("forbidden");
+  });
+
+  it("a grant is useless without the second factor (security O1)", async () => {
+    const event = await makeEvent(owner.id);
+    await createGrant(db, boss.id, { eventId: event.id, staffId: designer.id, capabilities: ["edit_content"], days: 7 });
+    const optional = process.env.STAFF_MFA_OPTIONAL;
+    process.env.STAFF_MFA_OPTIONAL = "";
+    try {
+      session.aal = "aal1";
+      expect(await as(designer.id, event.id, "edit_content")).toBe("forbidden");
+      // The owner is not staff and needs no second factor.
+      expect(await as(owner.id, event.id, "edit_content")).toBe("owner");
+      session.aal = "aal2";
+      expect(await as(designer.id, event.id, "edit_content")).toBe("staff");
+    } finally {
+      session.aal = "aal2";
+      process.env.STAFF_MFA_OPTIONAL = optional;
+    }
   });
 
   it("refuses capabilities that are never grantable", async () => {

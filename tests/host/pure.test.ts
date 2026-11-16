@@ -136,3 +136,13 @@ describe("pasted guest list", () => {
     expect(parsed.badLines).toEqual([2, 3, 4, 5]);
   });
 });
+
+describe("safeNext and the claim page", () => {
+  it("accepts exactly the claim page of the same locale", () => {
+    expect(safeNext("/ar/claim", "ar")).toBe("/ar/claim");
+    expect(safeNext("/en/claim", "ar")).toBe("/ar/app");
+    expect(safeNext("/ar/claim/../admin", "ar")).toBe("/ar/app");
+    expect(safeNext("/ar/claimx", "ar")).toBe("/ar/app");
+    expect(safeNext("/ar/claim?x=1", "ar")).toBe("/ar/app");
+  });
+});

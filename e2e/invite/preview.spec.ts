@@ -83,7 +83,16 @@ test("scratch card: scratching the foil away shows the answer", async ({ page })
   await page.waitForTimeout(500);
   await expect(frame.locator("[data-answer]")).toHaveCount(0);
   await page.screenshot({ path: shot("reveal-scratch-ar") });
-  const box = (await foil.boundingBox())!;
+  // The preview may still be gliding after the scroll (smooth scrolling); wait
+  // until the foil stops moving before drawing on it.
+  let box = (await foil.boundingBox())!;
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    const next = (await foil.boundingBox())!;
+    const still = Math.abs(next.x - box.x) < 0.5 && Math.abs(next.y - box.y) < 0.5;
+    box = next;
+    if (still) break;
+  }
   await page.mouse.move(box.x + 10, box.y + 12);
   await page.mouse.down();
   for (let row = 0; row < 6; row++) {
@@ -92,8 +101,7 @@ test("scratch card: scratching the foil away shows the answer", async ({ page })
     await page.mouse.move(row % 2 ? box.x + box.width - 10 : box.x + 10, y + 12, { steps: 10 });
   }
   await page.mouse.up();
-  await expect(frame.locator(".inv-scratch__card")).toHaveAttribute("data-cleared", "true");
-  await page.waitForTimeout(450);
-  await page.screenshot({ path: shot("reveal-scratch-cleared-ar") });
+  // Clearing half the foil is enough; the card then hands over to the result
+  // after a short pause, so on a slow run the card may already be gone here.
   await expect(frame.getByTestId("reveal-result")).toHaveAttribute("data-answer", "girl", { timeout: 10_000 });
 });

@@ -53,9 +53,14 @@ function Card({ baby, hint, onCleared }: { baby: { label: string; color: string 
     let last: { x: number; y: number } | null = null;
     let moves = 0;
 
+    // The foil was drawn at the card's size on mount; if the layout moves later
+    // (fonts loading, rotation) the canvas is stretched by CSS. Map the finger
+    // into the drawing's own coordinates so the scratch lands under it.
     const point = (event: PointerEvent) => {
       const box = canvas.getBoundingClientRect();
-      return { x: event.clientX - box.left, y: event.clientY - box.top };
+      const sx = box.width > 0 ? width / box.width : 1;
+      const sy = box.height > 0 ? height / box.height : 1;
+      return { x: (event.clientX - box.left) * sx, y: (event.clientY - box.top) * sy };
     };
     const scratch = (to: { x: number; y: number }) => {
       context.beginPath();

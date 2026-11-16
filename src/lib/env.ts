@@ -20,7 +20,13 @@ let cached: ServerEnv | undefined;
 // instead of failing at import time during the build.
 export function env(): ServerEnv {
   if (!cached) {
-    const parsed = schema.safeParse(process.env);
+    // The Vercel–Supabase integration provides the legacy key names; accept either.
+    const parsed = schema.safeParse({
+      ...process.env,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
     if (!parsed.success) {
       const names = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
       throw new Error(`Missing or invalid environment variables: ${names}`);

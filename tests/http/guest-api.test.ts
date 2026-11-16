@@ -150,7 +150,7 @@ suite("guest API over HTTP", () => {
     // request for a new event streams in a different order while the cache fills.
     // Compare settled responses with that key masked.
     const get = async (headers?: Record<string, string>) =>
-      (await (await fetch(`${BASE}/i/${a.slug}/ar`, { headers })).text()).replace(/\b[A-Za-z0-9]{22}\b/g, "REQUEST_KEY");
+      (await (await fetch(`${BASE}/i/${a.slug}/ar`, { headers })).text()).replace(/[A-Za-z0-9_-]{21}[vm](?=\\")/g, "REQUEST_KEY");
     await get();
     await new Promise((resolve) => setTimeout(resolve, 600));
     const plain = await get();

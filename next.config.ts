@@ -65,7 +65,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/((?!preview/).*)",
+        source: "/((?!preview$).*)",
         headers: [
           ...baseHeaders,
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -73,7 +73,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/preview/:path*",
+        source: "/preview",
         headers: [...baseHeaders, ...guestHeaders, { key: "Content-Security-Policy", value: csp("'self'") }],
       },
       { source: "/i/:path*", headers: guestHeaders },

@@ -16,7 +16,7 @@ async function host(page: Page, message: Record<string, unknown>) {
     document.body.innerHTML = "";
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", sandbox);
-    frame.src = "/preview/00000000-0000-4000-8000-000000000000";
+    frame.src = "/preview";
     frame.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff";
     window.addEventListener("message", (event) => {
       if (event.source === frame.contentWindow && event.data?.type === "lamma:preview-ready") {

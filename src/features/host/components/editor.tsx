@@ -285,7 +285,7 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
           <iframe
             ref={iframe}
             title={t.editor.previewTitle}
-            src={`/preview/${eventId}`}
+            src="/preview"
             sandbox="allow-scripts"
             referrerPolicy="no-referrer"
             className="mx-auto block h-[72vh] max-h-[780px] w-full max-w-[390px] rounded-[2rem] border border-line bg-raised shadow-sm"

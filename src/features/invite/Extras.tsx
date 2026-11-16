@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { getMessages } from "./messages";
 import { useInvite } from "./guest/GuestContext";
-import { useGames, useRecap, useWall } from "./games/hooks";
+import { eventEnded, useGames, useRecap, useWall } from "./games/hooks";
 import type { GamesData, RecapData, WallData } from "./games/types";
 
 const GameList = dynamic(() => import("./games/Games").then((m) => m.GameList), { ssr: false });
@@ -52,7 +52,7 @@ export function Extras({ demoExtras }: { demoExtras?: DemoExtras }) {
       {games && event.entitlements.games && !closed ? <GameList data={games} /> : null}
       {wall && !closed ? <WishesWall wall={wall} /> : null}
       {closed ? null : <Share startOpen={demoExtras?.shareOpen ?? false} />}
-      {recap && event.status === "ended" ? <RecapSection recap={recap} /> : null}
+      {recap && eventEnded(event) ? <RecapSection recap={recap} /> : null}
     </>
   );
 }

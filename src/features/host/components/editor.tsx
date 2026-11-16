@@ -10,6 +10,7 @@ import { saveDraftAction } from "../actions/events";
 import type { HostErrorCode } from "../lib/errors";
 import { errorText, hostMessages } from "../messages";
 import { BlocksPanel } from "./blocks-panel";
+import { EditorMediaProvider, ImageField } from "./blocks/media";
 import { LocalizedField } from "./editor-parts";
 
 type Props = {
@@ -250,13 +251,44 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
             </fieldset>
           </Card>
 
-          <BlocksPanel
-            blocks={content.blocks}
-            allowed={allowed}
-            lang={lang}
-            timezone={timezone}
-            onChange={(blocks) => setContent({ ...content, blocks })}
-          />
+          <EditorMediaProvider eventId={eventId} lang={lang}>
+            <BlocksPanel
+              blocks={content.blocks}
+              allowed={allowed}
+              lang={lang}
+              timezone={timezone}
+              onChange={(blocks) => setContent({ ...content, blocks })}
+            />
+
+            <Card>
+              <SectionHeading title={t.images.previewTitle} lead={t.images.previewLead} />
+              <div className="flex flex-col gap-4">
+                <LocalizedField
+                  id="preview-title"
+                  label={t.images.previewHeading}
+                  value={content.preview.title}
+                  max={80}
+                  lang={lang}
+                  onChange={(title) => setContent({ ...content, preview: { ...content.preview, title } })}
+                />
+                <LocalizedField
+                  id="preview-description"
+                  label={t.images.previewDescription}
+                  value={content.preview.description}
+                  max={160}
+                  lang={lang}
+                  multiline
+                  onChange={(description) => setContent({ ...content, preview: { ...content.preview, description } })}
+                />
+                <ImageField
+                  label={t.images.previewImage}
+                  value={content.preview.image}
+                  alt={t.images.previewImage}
+                  onChange={(image) => setContent({ ...content, preview: { ...content.preview, image } })}
+                />
+              </div>
+            </Card>
+          </EditorMediaProvider>
         </div>
 
         <aside

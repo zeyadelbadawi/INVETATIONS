@@ -51,6 +51,8 @@ const ar = {
     families: "العيلتين",
     gallery: "الصور",
     galleryEmpty: "الصور هتظهر هنا قريب",
+    photo: (n: number) => `صورة ${n}`,
+    photoOf: (name: string) => `صورة ${name}`,
     dressCode: "اللبس",
     dressColors: "ألوان مقترحة",
     notes: "خد بالك",
@@ -63,6 +65,17 @@ const ar = {
   locked: {
     title: "باقي التفاصيل في رابطك الشخصي",
     body: "العنوان والبرنامج والرد على الدعوة بيظهروا لما تفتح الرابط اللي وصلك على واتساب.",
+  },
+  passcode: {
+    title: "الدعوة دي ليها رقم سري",
+    body: "اكتب الرقم السري اللي أصحاب الدعوة بعتوهولك عشان تشوف التفاصيل. ولو وصلك رابط شخصي، افتحه على طول.",
+    label: "الرقم السري",
+    submit: "افتح التفاصيل",
+    checking: "بنتأكد…",
+    empty: "اكتب الرقم السري الأول.",
+    wrong: "الرقم السري مش مظبوط. اتأكد منه وجرّب تاني.",
+    locked: "محاولات كتير على الدعوة دي. استنى شوية وجرّب تاني.",
+    slow: "بالراحة شوية — جرّب بعد دقيقة.",
   },
   rsvp: {
     title: "هتشرّفنا؟",
@@ -227,6 +240,9 @@ const ar = {
     finalScores: "النتيجة النهائية",
     yours: (points: number) => `جمعت ${points} نقطة`,
     highlights: "أحلى الأمنيات",
+    topPlayers: "نجوم كل فريق",
+    playerPoints: (points: number) => `${points} نقطة`,
+    photoBy: (name: string) => `صورة من ${name}`,
   },
   footer: {
     madeWith: "معمولة بـ",
@@ -331,6 +347,8 @@ const en: Messages = {
     families: "The families",
     gallery: "Photos",
     galleryEmpty: "Photos will appear here soon",
+    photo: (n) => `Photo ${n}`,
+    photoOf: (name) => `Photo of ${name}`,
     dressCode: "Dress code",
     dressColors: "Suggested colours",
     notes: "Good to know",
@@ -343,6 +361,17 @@ const en: Messages = {
   locked: {
     title: "The rest is in your personal link",
     body: "The address, programme and reply form appear when you open the link you received on WhatsApp.",
+  },
+  passcode: {
+    title: "This invitation has a passcode",
+    body: "Enter the passcode the hosts shared with you to see the details. If you received a personal link, just open that.",
+    label: "Passcode",
+    submit: "Show the details",
+    checking: "Checking…",
+    empty: "Enter the passcode first.",
+    wrong: "That passcode isn't right. Check it and try again.",
+    locked: "Too many tries on this invitation. Please wait a few minutes and try again.",
+    slow: "Easy there — try again in a minute.",
   },
   rsvp: {
     title: "Will you join us?",
@@ -511,6 +540,9 @@ const en: Messages = {
     finalScores: "Final score",
     yours: (points) => `You scored ${points === 1 ? "1 point" : `${points} points`}`,
     highlights: "Favourite wishes",
+    topPlayers: "Top players",
+    playerPoints: (points) => (points === 1 ? "1 point" : `${points} points`),
+    photoBy: (name) => `Photo from ${name}`,
   },
   footer: {
     madeWith: "Made with",

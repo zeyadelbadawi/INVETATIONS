@@ -19,6 +19,26 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"event_claims": {
+                  Row: {
+                    "claimed_at": string | null,"claimed_by": string | null,"created_at": string,"created_by": string,"email_lower": string,"event_id": string,"expires_at": string,"id": string,"token_hash": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "claimed_at"?: string | null,"claimed_by"?: string | null,"created_at"?: string,"created_by": string,"email_lower": string,"event_id": string,"expires_at"?: string,"id"?: string,"token_hash": string
+                  }
+                  Update: {
+                    "claimed_at"?: string | null,"claimed_by"?: string | null,"created_at"?: string,"created_by"?: string,"email_lower"?: string,"event_id"?: string,"expires_at"?: string,"id"?: string,"token_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "event_claims_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "events"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"event_members": {
                   Row: {
                     "created_at": string,"event_id": string,"role": string,"user_id": string
@@ -601,14 +621,14 @@ isOneToOne: false
                   ]
                 },"wall_posts": {
                   Row: {
-                    "body": string | null,"created_at": string,"event_id": string,"id": string,"kind": string,"media_id": string | null,"player_id": string,"removed_by_staff_at": string | null,"reported_count": number,"status": string
+                    "body": string | null,"created_at": string,"event_id": string,"highlighted": boolean,"id": string,"kind": string,"media_id": string | null,"player_id": string,"removed_by_staff_at": string | null,"reported_count": number,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "body"?: string | null,"created_at"?: string,"event_id": string,"id"?: string,"kind": string,"media_id"?: string | null,"player_id": string,"removed_by_staff_at"?: string | null,"reported_count"?: number,"status"?: string
+                    "body"?: string | null,"created_at"?: string,"event_id": string,"highlighted"?: boolean,"id"?: string,"kind": string,"media_id"?: string | null,"player_id": string,"removed_by_staff_at"?: string | null,"reported_count"?: number,"status"?: string
                   }
                   Update: {
-                    "body"?: string | null,"created_at"?: string,"event_id"?: string,"id"?: string,"kind"?: string,"media_id"?: string | null,"player_id"?: string,"removed_by_staff_at"?: string | null,"reported_count"?: number,"status"?: string
+                    "body"?: string | null,"created_at"?: string,"event_id"?: string,"highlighted"?: boolean,"id"?: string,"kind"?: string,"media_id"?: string | null,"player_id"?: string,"removed_by_staff_at"?: string | null,"reported_count"?: number,"status"?: string
                   }
                   Relationships: [
                     {
@@ -637,7 +657,15 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "jobs_claim":
+            "claim_event":
+{ Args: { "p_email_lower": string,"p_token_hash": string,"p_user_id": string }; Returns: {
+              "claim_id": string,"event_id": string,"previous_owner": string
+            }[]
+                           },
+"db_now":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"jobs_claim":
 { Args: { "p_limit": number,"p_visibility_seconds": number }; Returns: {
               "attempts": number,
 "created_at": string,
@@ -659,6 +687,11 @@ isOneToOne: false
 "rate_limit_hit":
 { Args: { "p_key": string,"p_max": number,"p_window_seconds": number }; Returns: boolean
                            },
+"recap_top_players":
+{ Args: { "p_event_id": string,"p_per_team": number }; Returns: {
+              "name": string,"player_id": string,"points": number,"team_id": string
+            }[]
+                           },
 "recompute_team_scores":
 { Args: { "p_event_id": string }; Returns: undefined
                            },
@@ -678,6 +711,24 @@ isOneToOne: false
                            },
 "settle_order":
 { Args: { "p_amount_egp": number,"p_approved_by": string,"p_order_id": string,"p_provider": string,"p_provider_ref": string,"p_receipt_media_id": string }; Returns: boolean
+                           },
+"staff_find_events":
+{ Args: { "p_limit": number,"p_query": string }; Returns: {
+              "created_at": string,"id": string,"kind": string,"owner_email": string,"owner_id": string,"plan_id": string,"slug": string,"status": string
+            }[]
+                           },
+"staff_user_emails":
+{ Args: { "p_ids": (string)[] }; Returns: {
+              "email": string,"id": string
+            }[]
+                           },
+"staff_user_id_by_email":
+{ Args: { "p_email": string }; Returns: string
+                           },
+"unsettle_order":
+{ Args: { "p_order_id": string,"p_status": string }; Returns: {
+              "event_id": string,"plan_id": string,"slug": string
+            }[]
                            }
           }
           Enums: {

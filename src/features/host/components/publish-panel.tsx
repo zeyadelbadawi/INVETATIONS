@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import { cancelEventAction, postponeEventAction, publishEventAction } from "../actions/events";
-import { createOrderAction, submitReferenceAction } from "../actions/orders";
+import { cardCheckoutAvailableAction, createOrderAction, orderStatusAction, startCardCheckoutAction, submitReferenceAction } from "../actions/orders";
 import type { ActionResult } from "../lib/errors";
 import { fmt } from "../lib/text";
 import { errorText, hostMessages } from "../messages";
+import { paymentMessages } from "../messages-payments";
+
+const POLL_MS = 3000;
+const POLL_TRIES = 40;
 
 export type PlanView = {
   id: string;
@@ -39,6 +44,76 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
   const [reference, setReference] = useState("");
   const [asking, setAsking] = useState<"postpone" | "cancel" | null>(null);
   const [busy, startTransition] = useTransition();
+  const pm = paymentMessages(lang);
+  const router = useRouter();
+  const [cardAvailable, setCardAvailable] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [confirming, setConfirming] = useState<"waiting" | "late" | "done" | null>(null);
+  const hasPending = pending !== null && paidPlanId === null;
+
+  // The card button exists only while the gateway flag is on (server-side).
+  useEffect(() => {
+    if (!hasPending) return;
+    let live = true;
+    cardCheckoutAvailableAction().then(
+      (available) => live && setCardAvailable(available),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [hasPending]);
+
+  // Back from the gateway: the return address grants nothing. Only the
+  // webhook settles; this just waits for it and then reloads the page data.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") !== "card") return;
+    params.delete("payment");
+    const rest = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    if (paidPlanId !== null) return;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let live = true;
+    queueMicrotask(() => live && setConfirming("waiting"));
+    const tick = async () => {
+      tries += 1;
+      const result = await orderStatusAction(eventId).catch(() => null);
+      if (!live) return;
+      if (result?.ok && result.paid) {
+        setConfirming("done");
+        router.refresh();
+        return;
+      }
+      if (tries >= POLL_TRIES) {
+        setConfirming("late");
+        return;
+      }
+      timer = setTimeout(tick, POLL_MS);
+    };
+    timer = setTimeout(tick, POLL_MS);
+    return () => {
+      live = false;
+      if (timer) clearTimeout(timer);
+    };
+    // Runs once per visit; paidPlanId only decides whether to start.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  function payByCard() {
+    if (busy || redirecting) return;
+    setMessage(null);
+    startTransition(async () => {
+      const result = await startCardCheckoutAction(eventId, lang);
+      if (!result.ok) {
+        setMessage({ tone: "danger", text: pm.errors[result.error] });
+        return;
+      }
+      setRedirecting(true);
+      window.location.assign(result.url);
+    });
+  }
 
   const paidPlan = plans.find((plan) => plan.id === paidPlanId) ?? null;
   const canPublish = paidPlanId !== null && missing.length === 0 && (status === "draft" || status === "published");
@@ -59,7 +134,12 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <div aria-live="polite">{message ? <Notice tone={message.tone}>{message.text}</Notice> : null}</div>
+      <div aria-live="polite" className="flex flex-col gap-3">
+        {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+        {confirming === "waiting" ? <Notice>{pm.confirming}</Notice> : null}
+        {confirming === "late" ? <Notice>{pm.stillWaiting}</Notice> : null}
+        {confirming === "done" || (confirming && paidPlanId) ? <Notice tone="success">{pm.confirmed}</Notice> : null}
+      </div>
 
       <Card>
         <SectionHeading title={p.stepPlan} />
@@ -104,6 +184,18 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
       {pending && !paidPlanId ? (
         <Card>
           <SectionHeading title={p.stepPay} />
+          {cardAvailable ? (
+            <div className="mb-6 flex flex-col gap-3 border-b border-line pb-6">
+              <h3 className="text-xl font-semibold">{pm.cardTitle}</h3>
+              <p className="text-sm text-muted">{pm.cardLead}</p>
+              <div>
+                <Button disabled={busy || redirecting} aria-busy={redirecting} onClick={payByCard}>
+                  {redirecting ? pm.cardRedirecting : fmt(pm.cardButton, { amount: pending.amountEgp })}
+                </Button>
+              </div>
+              <p className="text-sm font-medium text-muted">{pm.orTransfer}</p>
+            </div>
+          ) : null}
           <h3 className="text-xl font-semibold">{fmt(p.payTitle, { amount: pending.amountEgp })}</h3>
           <p className="mt-2">{p.payInstructions}</p>
           <p className="mt-2 text-sm text-muted">{p.payNote}</p>

@@ -38,5 +38,5 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiResult
   }
 }
 
-export const guestPath = (slug: string, action: "me" | "session" | "join" | "rsvp" | "reveal") => `/api/guest/${encodeURIComponent(slug)}/${action}`;
+export const guestPath = (slug: string, action: "me" | "session" | "join" | "rsvp" | "reveal" | "passcode" | "details" | "recap") => `/api/guest/${encodeURIComponent(slug)}/${action}`;
 export const livePath = (slug: string) => `/api/live/${encodeURIComponent(slug)}`;

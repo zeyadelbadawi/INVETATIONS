@@ -19,7 +19,7 @@ import { hasBothLanguages } from "./lib/content";
 import { BlockView, type BlockContext } from "./blocks/Blocks";
 import { InviteProvider } from "./guest/GuestContext";
 import { LiveProvider } from "./guest/Live";
-import { GuestGreeting, GuestSlot } from "./guest/GuestSlots";
+import { GatedBody, GuestGreeting, GuestSlot } from "./guest/GuestSlots";
 import { Rsvp } from "./guest/Rsvp";
 import { Play } from "./guest/Play";
 import { RevealStage } from "./reveal/RevealStage";
@@ -82,7 +82,7 @@ export function Invitation({ event, template, palette, locale, scene, revealStyl
 
   const publicById = new Map(event.blocks.map((block) => [block.id, block]));
   const guestById = new Map((demo?.me.guestBlocks ?? []).map((block) => [block.id, block]));
-  const ctx: BlockContext = { event, locale, titleFields, extraBlocks: demo?.me.guestBlocks };
+  const ctx: BlockContext = { event, locale, titleFields, extraBlocks: demo?.me.guestBlocks, media: demo?.me.media };
   const firstGuestSlot = event.order.find((id) => !publicById.has(id));
 
   const reveal = event.kind === "gender_reveal" && event.entitlements.reveal && template.reveal;
@@ -147,7 +147,7 @@ export function Invitation({ event, template, palette, locale, scene, revealStyl
                 if (block) return <BlockView key={id} block={block} ctx={ctx} />;
                 return preview ? null : <GuestSlot key={id} id={id} first={id === firstGuestSlot} />;
               })}
-              {firstGuestSlot === undefined && !preview ? <GuestSlot id="" first /> : null}
+              {firstGuestSlot === undefined && !preview ? event.hasPasscode ? <GatedBody /> : <GuestSlot id="" first /> : null}
 
               <Rsvp />
               {reveal ? null : <Play />}

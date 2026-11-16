@@ -18,6 +18,9 @@ export type BlockContext = {
   titleFields: string[];
   // Guest-only blocks known to the caller (preview, or after /me): used to find the start time.
   extraBlocks?: Block[];
+  // Media id -> short-lived signed URL, from the guest API. Images without one
+  // keep their frame empty.
+  media?: Record<string, string>;
 };
 
 type Props<T extends Block["type"]> = { block: BlockOf<T>; ctx: BlockContext };
@@ -183,18 +186,35 @@ function Families({ block, ctx }: Props<"families">) {
   );
 }
 
-// Photo delivery (signed URLs from the guest API) is not connected yet: the block
-// keeps its place with the right number of frames so the page does not jump later.
+// Images arrive as short-lived signed URLs with the guest-only blocks. Frames
+// without one (preview, or not processed yet) keep their place so nothing jumps.
 function Gallery({ block, ctx }: Props<"gallery">) {
   const t = getMessages(ctx.locale);
+  const urls = block.images.map((id) => ctx.media?.[id] ?? null);
+  const shown = urls.filter((url): url is string => url !== null);
+  if (shown.length === 0) {
+    return (
+      <Section block={block} title={t.blocks.gallery}>
+        <ul className="inv-gallery" aria-label={t.blocks.galleryEmpty}>
+          {block.images.slice(0, 6).map((id) => (
+            <li key={id} className="inv-gallery__cell" />
+          ))}
+        </ul>
+        <p className="inv-hint">{t.blocks.galleryEmpty}</p>
+      </Section>
+    );
+  }
   return (
     <Section block={block} title={t.blocks.gallery}>
-      <ul className="inv-gallery" aria-label={t.blocks.galleryEmpty}>
-        {block.images.slice(0, 6).map((id) => (
-          <li key={id} className="inv-gallery__cell" />
+      <ul className="inv-gallery" data-count={shown.length}>
+        {shown.map((url, i) => (
+          <li key={url} className="inv-gallery__cell">
+            {/* A signed link from private storage: no optimiser, no referrer. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="inv-gallery__img" src={url} alt={t.blocks.photo(i + 1)} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+          </li>
         ))}
       </ul>
-      <p className="inv-hint">{t.blocks.galleryEmpty}</p>
     </Section>
   );
 }
@@ -279,11 +299,17 @@ function People({ block, ctx }: Props<"people">) {
           .filter((item) => pick(item.name, ctx.locale))
           .map((item) => {
             const name = pick(item.name, ctx.locale);
+            const photo = item.photo ? ctx.media?.[item.photo] : undefined;
             return (
               <li key={item.id} className="inv-person">
-                <span className="inv-person__mark" aria-hidden="true">
-                  {initials([name])[0]}
-                </span>
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="inv-person__photo" src={photo} alt={t.blocks.photoOf(name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="inv-person__mark" aria-hidden="true">
+                    {initials([name])[0]}
+                  </span>
+                )}
                 <span className="inv-person__text">
                   <span className="inv-person__name">{name}</span>
                   {pick(item.role, ctx.locale) ? <span className="inv-person__role">{pick(item.role, ctx.locale)}</span> : null}

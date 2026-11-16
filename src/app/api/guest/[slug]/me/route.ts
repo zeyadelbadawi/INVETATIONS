@@ -1,6 +1,6 @@
 import { adminDb } from "@/lib/supabase/admin";
-import { getGuestBlocks } from "@/lib/events/published";
 import { guestRead, json } from "@/lib/guest/route";
+import { readGuestDetails } from "@/lib/guest/details";
 
 // Everything personal the invitation page needs, in one request.
 export const GET = guestRead(async ({ event, guest }) => {
@@ -15,7 +15,7 @@ export const GET = guestRead(async ({ event, guest }) => {
     .eq("invitation_id", guest.invitation.id);
   rsvpQuery = personal ? rsvpQuery.is("player_id", null) : rsvpQuery.eq("player_id", guest.player?.id ?? "00000000-0000-0000-0000-000000000000");
 
-  const [rsvp, teams, household, guestBlocks] = await Promise.all([
+  const [rsvp, teams, household, details] = await Promise.all([
     rsvpQuery.maybeSingle(),
     db.from("teams").select("id, key, name_ar, name_en, color").eq("event_id", event.id).order("position"),
     // Players already on this invitation, so someone on a new browser can pick
@@ -24,7 +24,7 @@ export const GET = guestRead(async ({ event, guest }) => {
     !guest.player && (personal || event.settings.rosterVisible)
       ? db.from("players").select("id, name").eq("event_id", event.id).eq("invitation_id", guest.invitation.id).is("removed_at", null).order("created_at").limit(200)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    getGuestBlocks(event.id),
+    readGuestDetails(event),
   ]);
 
   const note = (rsvp.data?.answers as { note?: string } | null)?.note ?? "";
@@ -34,7 +34,9 @@ export const GET = guestRead(async ({ event, guest }) => {
     household: household.data ?? [],
     rsvp: rsvp.data ? { status: rsvp.data.status, adults: rsvp.data.adults, children: rsvp.data.children, note } : null,
     teams: (teams.data ?? []).map((t) => ({ id: t.id, key: t.key, name: { ar: t.name_ar, en: t.name_en }, color: t.color })),
-    guestBlocks,
+    guestBlocks: details.guestBlocks,
+    media: details.media,
+    content: details.content,
     rsvpOpen: event.status === "published" && !(event.settings.rsvpDeadline && new Date(event.settings.rsvpDeadline).getTime() < Date.now()),
   });
 });

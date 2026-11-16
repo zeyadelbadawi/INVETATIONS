@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { pick } from "@/content/schema";
 import { isLocale, type Locale } from "@/i18n/config";
+import { appOrigin } from "@/lib/env";
 import { getPublicEvent, type PublicEvent } from "@/lib/events/published";
+import { previewImageInfo } from "@/lib/media/content";
 import { getPalette, getTemplate } from "@/templates/registry";
 import { Invitation } from "@/features/invite/Invitation";
 import { eventTitle } from "@/features/invite/lib/content";
@@ -19,7 +21,8 @@ type Props = PageProps<"/i/[slug]/[locale]">;
 
 // Only what the page needs crosses into the client payload: no ids, no plan.
 function toInviteEvent(event: PublicEvent): InviteEvent {
-  // A passcode-protected event shows its opening only until the passcode flow exists.
+  // A passcode event keeps every block out of the shell: the body arrives from
+  // the guest API after a session or the passcode (security V3).
   const gated = event.hasPasscode;
   return {
     slug: event.slug,
@@ -28,6 +31,7 @@ function toInviteEvent(event: PublicEvent): InviteEvent {
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     timezone: event.timezone,
+    hasPasscode: gated,
     fields: event.fields,
     blocks: gated ? [] : event.blocks,
     order: gated ? [] : event.order,
@@ -45,11 +49,19 @@ async function inviteMetadata(slug: string, locale: Locale): Promise<Metadata> {
   const titleFields = template.overlays.filter((slot) => slot.role === "title").map((slot) => slot.field);
   const title = eventTitle(event, titleFields, locale, locale === "ar" ? " و" : " & ") || pick(template.name, locale);
   const description = pick(event.preview?.description, locale) || pick(event.fields.eyebrow, locale) || pick(event.fields.date_line, locale) || undefined;
+  // The preview image is served by its own public route, which streams only
+  // this event's processed preview image (never any other media).
+  const image = await previewImageInfo(event);
+  const images = image
+    ? [{ url: `/api/og/${event.slug}`, ...(image.width && image.height ? { width: image.width, height: image.height } : {}), alt: title }]
+    : undefined;
   return {
+    metadataBase: new URL(appOrigin()),
     title,
     description,
     robots: { index: false, follow: false, nocache: true },
-    openGraph: { title, description, type: "website", locale: locale === "ar" ? "ar_EG" : "en_GB" },
+    openGraph: { title, description, type: "website", locale: locale === "ar" ? "ar_EG" : "en_GB", images },
+    twitter: image ? { card: "summary_large_image", title, description, images: [`/api/og/${event.slug}`] } : undefined,
   };
 }
 

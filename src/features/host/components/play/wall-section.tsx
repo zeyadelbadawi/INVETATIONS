@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { moderatePost } from "@/features/control/actions";
+import { highlightPost, listHighlightedPosts, moderatePost } from "@/features/control/actions";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
@@ -20,7 +20,13 @@ const RENEW_MS = 8 * 60 * 1000;
 export function WallSection({ lang, eventId, posts, timezone }: Props) {
   const t = hostMessages(lang);
   const w = t.play.wall;
+  const h = t.highlights;
   const { act, pending, message } = useAct(lang);
+  // Wishes marked for the guests' recap. Read separately so the shared page
+  // data does not change; refreshed whenever the list of posts does.
+  const [highlighted, setHighlighted] = useState<ReadonlySet<string>>(new Set());
+  const [highlightRound, setHighlightRound] = useState(0);
+  const postsKey = posts.map((post) => `${post.id}:${post.status}`).join(",");
   // Kept across the page's periodic reloads so a playing voice note is not interrupted.
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [round, setRound] = useState(0);
@@ -46,6 +52,18 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
   }, [eventId, wantedKey, round]);
 
   useEffect(() => {
+    let cancelled = false;
+    listHighlightedPosts(eventId)
+      .then((ids) => {
+        if (!cancelled) setHighlighted(new Set(ids));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, postsKey, highlightRound]);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setUrls({});
       setRound((n) => n + 1);
@@ -62,6 +80,15 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
     act(
       () => moderatePost(eventId, postId, status),
       (ok) => (ok ? null : { tone: "danger", text: t.play.failed }),
+    );
+  const toggleHighlight = (postId: string, on: boolean) =>
+    act(
+      () => highlightPost(eventId, postId, on),
+      (result) => {
+        setHighlightRound((n) => n + 1);
+        if (result.ok) return null;
+        return { tone: "danger", text: result.reason === "full" ? h.full : t.play.failed };
+      },
     );
   const dates = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 
@@ -95,7 +122,7 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
     <div className="flex flex-col gap-4">
       <ActNotice message={message} />
       <Card>
-        <SectionHeading title={w.title} lead={w.lead} />
+        <SectionHeading title={w.title} lead={`${w.lead} ${h.lead}`} />
         {posts.length === 0 ? <Notice>{w.empty}</Notice> : null}
         <div className="flex flex-col gap-8">
           {sections.map(({ status, title }) => {
@@ -111,7 +138,10 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
                     <li key={post.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-semibold [overflow-wrap:anywhere]">{post.author}</p>
-                        {post.reported > 0 ? <Badge tone="danger">{fmt(w.reported, { n: post.reported })}</Badge> : null}
+                        <span className="flex flex-wrap gap-1">
+                          {highlighted.has(post.id) && post.status === "visible" ? <Badge tone="highlight">{h.badge}</Badge> : null}
+                          {post.reported > 0 ? <Badge tone="danger">{fmt(w.reported, { n: post.reported })}</Badge> : null}
+                        </span>
                       </div>
                       {media(post)}
                       {/* Guest text is rendered as text, never as markup. */}
@@ -130,6 +160,19 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
                           {status !== "hidden" ? (
                             <Button variant="secondary" size="sm" className="flex-1" disabled={pending} onClick={() => moderate(post.id, "hidden")}>
                               {w.hide}
+                              <span className="sr-only"> — {post.author}</span>
+                            </Button>
+                          ) : null}
+                          {status === "visible" ? (
+                            <Button
+                              variant={highlighted.has(post.id) ? "primary" : "ghost"}
+                              size="sm"
+                              className="w-full"
+                              disabled={pending}
+                              aria-pressed={highlighted.has(post.id)}
+                              onClick={() => toggleHighlight(post.id, !highlighted.has(post.id))}
+                            >
+                              {highlighted.has(post.id) ? h.remove : h.add}
                               <span className="sr-only"> — {post.author}</span>
                             </Button>
                           ) : null}

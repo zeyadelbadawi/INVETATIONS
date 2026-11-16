@@ -4,7 +4,8 @@ import "server-only";
 import { z } from "zod";
 import { requireEventAccess, requireStaff } from "@/lib/events/access";
 import { addStarterGames, saveGame, setGameState, setTruth, settleGame } from "@/features/control/games";
-import { removePlayer, renamePlayer, setPlayerApproved, setPostStatus, staffTakedown } from "@/features/control/lib";
+import { highlightedPostIds, removePlayer, renamePlayer, setPlayerApproved, setPostHighlighted, setPostStatus, staffTakedown } from "@/features/control/lib";
+import { readRevealStyle, setRevealStyle, type RevealStyleState, type SetStyleResult } from "@/features/control/reveal-style";
 import { cancelReveal, issueKeeperLink, startReveal } from "@/lib/reveal/service";
 import { adminDb } from "@/lib/supabase/admin";
 import { entitlementsSchema } from "@/lib/events/published";
@@ -14,6 +15,17 @@ const id = z.uuid();
 export async function moderatePost(eventId: string, postId: string, status: "visible" | "hidden") {
   const actor = await requireEventAccess(id.parse(eventId), "moderate");
   return setPostStatus(eventId, actor, id.parse(postId), z.enum(["visible", "hidden"]).parse(status));
+}
+
+// Marks a wish for the guests' after-event recap (up to 12).
+export async function highlightPost(eventId: string, postId: string, highlighted: boolean) {
+  const actor = await requireEventAccess(id.parse(eventId), "moderate");
+  return setPostHighlighted(eventId, actor, id.parse(postId), z.boolean().parse(highlighted));
+}
+
+export async function listHighlightedPosts(eventId: string): Promise<string[]> {
+  await requireEventAccess(id.parse(eventId), "moderate");
+  return highlightedPostIds(eventId);
 }
 
 export async function approvePlayer(eventId: string, playerId: string, approved: boolean) {
@@ -59,6 +71,17 @@ export async function beginReveal(eventId: string, leadSeconds: number): Promise
 export async function abortReveal(eventId: string): Promise<boolean> {
   const actor = await requireEventAccess(id.parse(eventId), "manage_reveal");
   return cancelReveal(eventId, actor.userId);
+}
+
+// The reveal's style (balloon or scratch card). Owner only, before the countdown.
+export async function revealStyleState(eventId: string): Promise<RevealStyleState | null> {
+  await requireEventAccess(id.parse(eventId), "manage_reveal");
+  return readRevealStyle(eventId);
+}
+
+export async function chooseRevealStyle(eventId: string, style: "balloon" | "scratch"): Promise<SetStyleResult> {
+  const actor = await requireEventAccess(id.parse(eventId), "manage_reveal");
+  return setRevealStyle(eventId, actor, z.enum(["balloon", "scratch"]).parse(style));
 }
 
 export async function takedownPost(postId: string): Promise<boolean> {

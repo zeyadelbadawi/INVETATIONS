@@ -111,7 +111,29 @@ export function useWall(): WallData | null {
   }, [enabled, posts, slug, voice, photos]);
 }
 
-// No endpoint yet: the recap section stays hidden until this returns data.
+// Over when the hosts closed it, or when its end time has passed.
+export function eventEnded(event: { status: string; endsAt: string | null }, now = Date.now()): boolean {
+  if (event.status === "ended") return true;
+  return event.status === "published" && event.endsAt !== null && Date.parse(event.endsAt) < now;
+}
+
+// The recap, for guests with a session once the event is over. The server
+// refuses it before then, so asking early only costs one request.
 export function useRecap(): RecapData | null {
-  return null;
+  const { event, status, demo } = useInvite();
+  const [recap, setRecap] = useState<RecapData | null>(null);
+  const slug = event.slug;
+  const [ended] = useState(() => eventEnded(event));
+  const enabled = !demo && status === "ready" && ended;
+
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+    apiGet<RecapData>(`${base(slug)}/recap`, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok && Array.isArray(result.data?.teams)) setRecap(result.data);
+    });
+    return () => controller.abort();
+  }, [enabled, slug]);
+
+  return enabled ? recap : null;
 }

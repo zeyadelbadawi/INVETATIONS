@@ -1837,3 +1837,60 @@ textarea.inv-input {
 .inv-choice input:disabled:checked + span {
   opacity: 0.9;
 }
+
+/* ───────────── Guest images and the passcode form ───────────── */
+.inv-gallery__cell {
+  overflow: hidden;
+}
+.inv-gallery__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.inv-gallery[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+.inv-gallery[data-count="1"] .inv-gallery__cell {
+  aspect-ratio: 4 / 3;
+}
+.inv-gallery[data-count="2"],
+.inv-gallery[data-count="4"] {
+  grid-template-columns: repeat(2, 1fr);
+}
+.inv-person__photo {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--tint);
+}
+.inv-passcode .inv-form {
+  width: 100%;
+  max-width: 22rem;
+  margin-top: 0.75rem;
+  text-align: start;
+}
+.inv-passcode .inv-input {
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+.inv-recap__top {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.inv-recap__team .inv-plainlist li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.inv-wish__photo {
+  display: block;
+  width: 100%;
+  max-height: 20rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+}

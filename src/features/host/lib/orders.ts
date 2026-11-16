@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { Actor } from "@/lib/events/access";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
+import type { PaymentProvider } from "@/lib/payments/provider";
+import { CHECKOUT_ACTION } from "@/lib/payments/settle";
 import { auditActor, loadEventFor } from "./access";
 import { HostError } from "./errors";
 
@@ -150,4 +152,70 @@ export async function paymentState(db: AdminClient, actor: Actor, eventId: strin
     planId: event.plan_id,
     pending: { id: order.id, planId: order.plan_id, amountEgp: order.amount_egp, createdAt: order.created_at, references },
   };
+}
+
+// --- Card checkout (behind PAYMOB_ENABLED) -----------------------------------
+
+export type CheckoutUrls = { returnUrl: string; notifyUrl: string };
+
+// Starts a hosted card checkout for the event's pending order. The amount comes
+// from the order snapshot (security P1); the browser names only the event. The
+// gateway's order id is recorded against our order so the webhook can be bound
+// to it (src/lib/payments/settle.ts). Nothing here marks anything paid.
+export async function startCardCheckout(
+  db: AdminClient,
+  actor: Actor,
+  eventId: string,
+  provider: PaymentProvider,
+  urls: CheckoutUrls,
+  locale: "ar" | "en",
+): Promise<{ redirectUrl: string }> {
+  const event = await loadEventFor(db, actor, eventId, { ownerOnly: true });
+  if (event.plan_id) throw new HostError("already_paid");
+
+  const { data: order } = await db
+    .from("orders")
+    .select("id, plan_id, amount_egp")
+    .eq("event_id", event.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!order) throw new HostError("no_pending_order");
+  if (order.amount_egp <= 0) throw new HostError("invalid");
+
+  const [{ data: plan }, { data: user }] = await Promise.all([
+    db.from("plans").select("name_ar, name_en").eq("id", order.plan_id).maybeSingle(),
+    db.auth.admin.getUserById(actor.userId),
+  ]);
+  const email = user?.user?.email;
+  if (!email) throw new HostError("forbidden");
+
+  const session = await provider.createCheckout({
+    orderId: order.id,
+    amountEgp: order.amount_egp,
+    itemName: (locale === "ar" ? plan?.name_ar : plan?.name_en) ?? order.plan_id,
+    customerEmail: email,
+    returnUrl: urls.returnUrl,
+    notifyUrl: urls.notifyUrl,
+  });
+
+  await audit({
+    ...auditActor(actor),
+    action: CHECKOUT_ACTION,
+    eventId: event.id,
+    target: order.id,
+    metadata: { order_id: order.id, provider: provider.id, provider_order_id: session.providerOrderId, reference: session.reference },
+  });
+  return { redirectUrl: session.redirectUrl };
+}
+
+export type OrderStatus = { paid: boolean; pending: boolean };
+
+// What the return page polls. The browser coming back from the gateway grants
+// nothing; only the webhook settles.
+export async function orderStatus(db: AdminClient, actor: Actor, eventId: string): Promise<OrderStatus> {
+  const event = await loadEventFor(db, actor, eventId, { ownerOnly: true });
+  const { count } = await db.from("orders").select("id", { count: "exact", head: true }).eq("event_id", event.id).eq("status", "pending");
+  return { paid: event.plan_id !== null, pending: (count ?? 0) > 0 };
 }

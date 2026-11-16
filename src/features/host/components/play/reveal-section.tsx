@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { abortReveal, beginReveal, createKeeperLink } from "@/features/control/actions";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { abortReveal, beginReveal, chooseRevealStyle, createKeeperLink, revealStyleState } from "@/features/control/actions";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Card, Notice, SectionHeading } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -29,6 +29,76 @@ type Props = {
 };
 
 const LEADS = [1, 2, 5, 10] as const;
+
+type Style = "balloon" | "scratch";
+
+// Balloon or scratch card. Owner only (like the rest of this section), and
+// fixed once the countdown starts; the server re-checks both.
+function StylePicker({ lang, eventId, started }: { lang: Locale; eventId: string; started: boolean }) {
+  const t = hostMessages(lang);
+  const s = t.revealStyle;
+  const [state, setState] = useState<{ style: Style | null; styles: Style[]; locked: boolean } | null>(null);
+  const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    revealStyleState(eventId)
+      .then((result) => {
+        if (!cancelled) setState(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, started]);
+
+  if (!state || state.styles.length < 2) return null;
+  const locked = started || state.locked;
+
+  function choose(style: Style) {
+    if (!state || style === state.style) return;
+    const previous = state.style;
+    setState({ ...state, style });
+    setNotice(null);
+    startTransition(async () => {
+      try {
+        const result = await chooseRevealStyle(eventId, style);
+        if (result.ok) setNotice({ tone: "success", text: s.saved });
+        else {
+          setState((current) => (current ? { ...current, style: previous, locked: current.locked || result.reason === "locked" } : current));
+          setNotice({ tone: "danger", text: s.errors[result.reason] });
+        }
+      } catch {
+        setState((current) => (current ? { ...current, style: previous } : current));
+        setNotice({ tone: "danger", text: t.play.failed });
+      }
+    });
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <SectionHeading title={s.title} lead={locked ? s.locked : s.lead} />
+      <fieldset disabled={locked || pending} className="disabled:opacity-60">
+        <legend className="sr-only">{s.title}</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {state.styles.map((style) => (
+            <label key={style} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line p-3 has-[:checked]:border-secondary has-[:checked]:ring-2 has-[:checked]:ring-secondary/30">
+              <input type="radio" name="reveal-style" className="mt-1 size-5 accent-secondary" checked={state.style === style} onChange={() => choose(style)} />
+              <span className="flex flex-col">
+                <span className="font-medium">{s[style]}</span>
+                <span className="text-sm text-muted">{style === "balloon" ? s.balloonHint : s.scratchHint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <p role="status" aria-live="polite" className={`text-sm ${notice?.tone === "danger" ? "text-danger" : "text-muted"}`}>
+        {notice?.text ?? ""}
+      </p>
+    </Card>
+  );
+}
 
 export function RevealSection({ lang, eventId, slug, origin, timezone, entitled, published, isOwner, status, live }: Props) {
   const t = hostMessages(lang);
@@ -141,6 +211,8 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
   return (
     <div className="flex flex-col gap-4">
       <ActNotice message={message} />
+
+      <StylePicker lang={lang} eventId={eventId} started={started} />
 
       <Card className="flex flex-col gap-3">
         <SectionHeading title={r.step1} lead={r.keeperLead} />

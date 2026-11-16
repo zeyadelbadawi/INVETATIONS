@@ -18,15 +18,35 @@ export type PendingOrder = {
   conflicted: boolean;
 };
 
-async function hasConflict(db: AdminClient, staffId: string, eventId: string, ownerId: string, buyerId: string) {
+// The approver must be uninvolved with the event (security rule 34): not its
+// owner or buyer, not the staff member who created it on a customer's behalf,
+// not anyone who holds or ever held a grant on it, and not whoever issued its
+// claim link.
+export async function hasConflict(db: AdminClient, staffId: string, eventId: string, ownerId: string, buyerId: string) {
   if (ownerId === staffId || buyerId === staffId) return true;
-  // Any grant on the event counts, live or not: the approver must be uninvolved (security rule 34).
-  const { count } = await db
-    .from("staff_grants")
-    .select("id", { count: "exact", head: true })
-    .eq("event_id", eventId)
-    .eq("staff_id", staffId);
-  return (count ?? 0) > 0;
+  const [grants, claims, created] = await Promise.all([
+    db.from("staff_grants").select("id", { count: "exact", head: true }).eq("event_id", eventId).eq("staff_id", staffId),
+    db.from("event_claims").select("id", { count: "exact", head: true }).eq("event_id", eventId).eq("created_by", staffId),
+    db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("actor_id", staffId)
+      .eq("action", "event.created_on_behalf"),
+  ]);
+  if (grants.error || claims.error || created.error) throw new Error("conflict check failed");
+  return (grants.count ?? 0) + (claims.count ?? 0) + (created.count ?? 0) > 0;
+}
+
+async function involvedEvents(db: AdminClient, staffId: string, eventIds: string[]): Promise<Set<string>> {
+  const [{ data: grants }, { data: claims }, { data: created }] = await Promise.all([
+    db.from("staff_grants").select("event_id").eq("staff_id", staffId).in("event_id", eventIds),
+    db.from("event_claims").select("event_id").eq("created_by", staffId).in("event_id", eventIds),
+    db.from("audit_log").select("event_id").eq("actor_id", staffId).eq("action", "event.created_on_behalf").in("event_id", eventIds),
+  ]);
+  const out = new Set<string>();
+  for (const row of [...(grants ?? []), ...(claims ?? []), ...(created ?? [])]) if (row.event_id) out.add(row.event_id);
+  return out;
 }
 
 // The queue. Shows no guest data and no phone numbers.
@@ -41,13 +61,12 @@ export async function listPendingOrders(db: AdminClient, staffId: string, locale
   if (!orders || orders.length === 0) return [];
 
   const eventIds = [...new Set(orders.map((o) => o.event_id))];
-  const [{ data: events }, references, { data: grants }] = await Promise.all([
+  const [{ data: events }, references, granted] = await Promise.all([
     db.from("events").select("id, slug, owner_id, content").in("id", eventIds),
     submittedReferences(db, eventIds),
-    db.from("staff_grants").select("event_id").eq("staff_id", staffId).in("event_id", eventIds),
+    involvedEvents(db, staffId, eventIds),
   ]);
   const byId = new Map((events ?? []).map((e) => [e.id, e]));
-  const granted = new Set((grants ?? []).map((g) => g.event_id));
 
   return orders.map((order) => {
     const event = byId.get(order.event_id);
@@ -96,6 +115,12 @@ export async function approveOrder(db: AdminClient, staffId: string, raw: unknow
   if (await hasConflict(db, staffId, event.id, event.owner_id, order.user_id)) throw new HostError("self_approval");
   if (order.status !== "pending") throw new HostError("not_pending");
   if (order.amount_egp !== input.amountEgp) throw new HostError("amount_mismatch");
+
+  // A transfer reference pays for one order only. The unique index on
+  // payments(provider, provider_ref) is the guarantee; this check gives the
+  // friendly answer first, and also refuses a reference used with any provider.
+  const { count: used } = await db.from("payments").select("id", { count: "exact", head: true }).eq("provider_ref", input.reference);
+  if ((used ?? 0) > 0) throw new HostError("duplicate_reference");
 
   const { data: settled, error } = await db.rpc("settle_order", {
     p_order_id: order.id,

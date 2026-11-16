@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { fmt, normalisePhone } from "../../lib/text";
 import { hostMessages } from "../../messages";
 import { IconButton, ItemList, LocalizedField } from "../editor-parts";
+import { ImageField } from "./media";
 import { EMPTY, type BlockFormProps } from "./types";
 
 export function PeopleForm({ block, onChange, lang }: BlockFormProps<"people">) {
   const t = hostMessages(lang).editor;
+  const images = hostMessages(lang).images;
   const id = `b-${block.id}`;
   return (
     <>
@@ -25,7 +27,12 @@ export function PeopleForm({ block, onChange, lang }: BlockFormProps<"people">) 
           <>
             <LocalizedField id={`${id}-${item.id}-name`} label={t.f.personName} value={item.name} max={80} lang={lang} onChange={(name) => update({ ...item, name })} />
             <LocalizedField id={`${id}-${item.id}-role`} label={t.f.personRole} value={item.role} max={120} lang={lang} onChange={(role) => update({ ...item, role })} />
-            <p className="text-sm text-muted">{t.imageSoon}</p>
+            <ImageField
+              label={images.personPhoto}
+              value={item.photo}
+              alt={fmt(images.personPhotoAlt, { name: item.name[lang] || item.name.ar || item.name.en })}
+              onChange={(photo) => update({ ...item, photo })}
+            />
           </>
         )}
       />

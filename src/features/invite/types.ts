@@ -13,6 +13,8 @@ export type InviteEvent = {
   startsAt: string | null;
   endsAt: string | null;
   timezone: string;
+  // The body (even public blocks) is behind a session or the event passcode.
+  hasPasscode?: boolean;
   fields: EventContent["fields"];
   blocks: Block[];
   // Block ids in host order. Ids that are not in `blocks` are guest-only slots.
@@ -38,6 +40,20 @@ export type GuestMe = {
   teams: GuestTeam[];
   guestBlocks: Block[];
   rsvpOpen: boolean;
+  // Media id -> short-lived signed URL for the images the guest blocks show.
+  media?: Record<string, string>;
+  // Passcode events only: the whole body (public and guest blocks) in host order.
+  content?: GuestContent | null;
+};
+
+export type GuestContent = { blocks: Block[]; order: string[] };
+
+// GET /api/guest/[slug]/details — a passcode event unlocked with the passcode.
+// Blocks only: no invitation, player or RSVP.
+export type GuestDetails = {
+  guestBlocks: Block[];
+  media: Record<string, string>;
+  content: GuestContent | null;
 };
 
 // GET /api/live/[slug]

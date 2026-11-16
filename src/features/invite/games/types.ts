@@ -1,6 +1,6 @@
 // Shapes of the play sections' data. Games and the wall come from the guest API
 // (/api/guest/[slug]/games, /wall, /upload); view and tally shapes are those of
-// the pure game modules in src/play. The recap has no endpoint yet.
+// the pure game modules in src/play. The recap comes from /api/guest/[slug]/recap.
 import type { Localized } from "@/content/schema";
 import type { QuizQuestionView, QuizView } from "@/play/modules/quiz";
 import type { VoteView } from "@/play/modules/vote";
@@ -57,9 +57,13 @@ export type WallData = {
   report: (postId: string) => Promise<void>;
 };
 
+// GET /api/guest/[slug]/recap, after the event. Names are first names of
+// approved players only; photo links are short-lived and only for players who
+// may see wall photos.
 export type RecapData = {
-  teams: { id: string; name: Localized; color: string; score: number }[];
+  teams: { id: string; key?: string; name: Localized; color: string; score: number; players?: number }[];
   winnerTeamId: string | null; // null = tie
+  topPlayers?: { teamId: string; players: { name: string; points: number }[] }[];
   myPoints: number | null;
-  highlights: { id: string; author: string; text: string }[];
+  highlights: { id: string; kind?: "text" | "voice" | "photo"; author: string; text: string; mediaUrl?: string | null }[];
 };

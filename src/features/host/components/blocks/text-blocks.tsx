@@ -2,6 +2,7 @@
 
 import { hostMessages } from "../../messages";
 import { ItemList, LocalizedField } from "../editor-parts";
+import { GalleryEditor } from "./media";
 import { EMPTY, type BlockFormProps } from "./types";
 
 export function StoryForm({ block, onChange, lang }: BlockFormProps<"story">) {
@@ -91,13 +92,8 @@ export function CountdownForm({ lang }: BlockFormProps<"countdown">) {
   return <p className="text-sm text-muted">{hostMessages(lang).editor.f.countdownNote}</p>;
 }
 
-// Media upload is not built yet; the section can be kept so its place is held.
-export function GalleryForm({ lang }: BlockFormProps<"gallery">) {
-  const t = hostMessages(lang);
-  return (
-    <p className="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
-      <span className="font-medium text-fg">{t.common.comingSoon}. </span>
-      {t.editor.f.gallerySoon}
-    </p>
-  );
+// Photos for the gallery (guest-only): uploaded, re-encoded on the server and
+// shown to guests through short-lived links.
+export function GalleryForm({ block, onChange }: BlockFormProps<"gallery">) {
+  return <GalleryEditor images={block.images} max={24} onChange={(images) => onChange({ ...block, images })} />;
 }

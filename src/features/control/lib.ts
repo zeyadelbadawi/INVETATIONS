@@ -91,3 +91,50 @@ export async function staffTakedown(staffId: string, postId: string): Promise<bo
   await audit({ actorId: staffId, actorKind: "staff", action: "wall.takedown", eventId: data[0].event_id, target: postId });
   return true;
 }
+
+export const MAX_HIGHLIGHTS = 12;
+
+// Marks a wish for the after-event recap. Only the flag changes; whether the
+// post is shown at all stays with setPostStatus, and a staff takedown keeps it
+// out of the recap whatever the flag says.
+export async function setPostHighlighted(
+  eventId: string,
+  actor: Actor,
+  postId: string,
+  highlighted: boolean,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "full" }> {
+  const db = adminDb();
+  if (highlighted) {
+    const { count } = await db
+      .from("wall_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("highlighted", true)
+      .eq("status", "visible")
+      .is("removed_by_staff_at", null)
+      .neq("id", postId);
+    if ((count ?? 0) >= MAX_HIGHLIGHTS) return { ok: false, reason: "full" };
+  }
+  const { data, error } = await db
+    .from("wall_posts")
+    .update({ highlighted })
+    .eq("event_id", eventId)
+    .eq("id", postId)
+    .is("removed_by_staff_at", null)
+    .select("id");
+  if (error) throw new Error(`highlight failed: ${error.message}`);
+  if (!data || data.length === 0) return { ok: false, reason: "not_found" };
+  await audit({ actorId: actor.userId, actorKind: actorKind(actor), action: highlighted ? "wall.highlighted" : "wall.unhighlighted", eventId, target: postId, grantId: actor.grantId });
+  return { ok: true };
+}
+
+export async function highlightedPostIds(eventId: string): Promise<string[]> {
+  const { data } = await adminDb()
+    .from("wall_posts")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("highlighted", true)
+    .is("removed_by_staff_at", null)
+    .limit(300);
+  return (data ?? []).map((row) => row.id);
+}

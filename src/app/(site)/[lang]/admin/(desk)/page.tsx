@@ -28,8 +28,8 @@ async function OrdersQueue({ lang }: { lang: Locale }) {
     if (error instanceof AccessError && error.reason === "unauthenticated") {
       redirect(`/${lang}/login` as Route);
     }
-    // Not staff: the page does not exist for them.
-    if (error instanceof AccessError) notFound();
+    // Designers have no queue: their page is "My assignments" (which is a 404 for non-staff).
+    if (error instanceof AccessError) redirect(`/${lang}/admin/assignments` as Route);
     if (error instanceof HostError && error.code === "mfa_required") {
       return (
         <Notice tone="danger">

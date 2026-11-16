@@ -24,5 +24,14 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/[lang]/auth/
       return NextResponse.redirect(new URL(safeNext(params.get("next"), lang), appOrigin()), { headers });
     }
   }
+  // Links built from the default email template arrive with a PKCE code instead.
+  const code = params.get("code");
+  if (code && code.length <= 256) {
+    const db = await hostDb();
+    const { error } = await db.auth.exchangeCodeForSession(code);
+    if (!error) {
+      return NextResponse.redirect(new URL(safeNext(params.get("next"), lang), appOrigin()), { headers });
+    }
+  }
   return NextResponse.redirect(new URL(`/${lang}/login?error=link`, appOrigin()), { headers });
 }

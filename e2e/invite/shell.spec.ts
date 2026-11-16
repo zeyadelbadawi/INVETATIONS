@@ -19,14 +19,18 @@ test("the shell is byte-identical with and without the guest cookie and holds no
   for (const locale of ["ar", "en"]) {
     const path = `/i/${event.slug}/${locale}`;
     await anonymous.get(path); // warm, so both reads see the same compiled page
+    await new Promise((resolve) => setTimeout(resolve, 600));
     const plain = await (await anonymous.get(path)).text();
     const withCookie = await (await guest.get(path)).text();
     expect(plain.length).toBeGreaterThan(5000);
-    // `next dev` stamps every response with a random request id for HMR (self.__next_r); a
-    // production build has none. That one token is the only thing normalised here.
-    const devId = /self\.__next_r="[^"]+"/g;
-    if (!devId.test(plain)) expect(withCookie).toBe(plain);
-    expect(withCookie.replace(devId, "")).toBe(plain.replace(devId, ""));
+    // The framework stamps each response with a random request key (`self.__next_r` in
+    // development, a 22-character key in the streamed payload in production). Those
+    // tokens are the only thing normalised; everything else must match byte for byte.
+    const mask = (html: string) =>
+      html.replace(/self\.__next_r="[^"]+"/g, "").replace(/[A-Za-z0-9_-]{21}[vm](?=\\")/g, "REQUEST_KEY");
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const settled = await (await anonymous.get(path)).text();
+    expect(mask(withCookie)).toBe(mask(settled));
     expect(withCookie.length).toBe(plain.length);
     expect(plain).not.toContain(SENTINEL);
     expect(plain).not.toContain(event.labels.personal);

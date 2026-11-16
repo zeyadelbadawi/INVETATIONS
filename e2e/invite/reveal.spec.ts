@@ -96,7 +96,8 @@ async function startCountdown(event: Seeded, seconds: number): Promise<number> {
     expect(before.filter((r) => r.url.includes("/api/live")).length).toBeGreaterThan(3);
     for (const response of before) {
       if (response.url.includes("/me") || response.url.includes("/join")) continue; // team names "تيم بنت" are public
-      expect(response.body, response.url).not.toMatch(/girl|boy/);
+      // Both team keys ("boy", "girl") are always present; what must be absent is an answer.
+      expect(response.body, response.url).not.toMatch(/"answer"\s*:\s*\[|"released"\s*:\s*true/);
     }
     expect(seen.some((r) => /"answer":\["girl"\]/.test(r.body))).toBe(true);
 

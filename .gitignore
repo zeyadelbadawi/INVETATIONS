@@ -51,3 +51,4 @@ supabase/.temp
 /playwright-report
 
 /e2e/invite/.results
+/e2e/marketing/.results

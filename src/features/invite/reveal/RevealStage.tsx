@@ -88,8 +88,10 @@ function clock(seconds: number): string {
 }
 
 export function RevealStage({ demoAnswer, demoInteractive = false }: { demoAnswer?: Answer; demoInteractive?: boolean }) {
-  const { event, locale, me, teamPresets, revealStyle, demo } = useInvite();
+  const { event, locale, me, teamPresets, revealStyle: defaultStyle, demo } = useInvite();
   const { live } = useLive();
+  // The host's choice, once a reveal exists; otherwise the template's default.
+  const revealStyle = live?.revealStyle ?? defaultStyle;
   const t = getMessages(locale).reveal;
   const calm = useSyncExternalStore(subscribeMotion, reducedMotion, () => false);
 

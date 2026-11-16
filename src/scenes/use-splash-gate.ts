@@ -1,3 +1,5 @@
+"use client";
+
 // The splash gate (playbook §7.3), with one change: only scenes marked `gate` hold it.
 // The lock itself comes from the boot script before the first paint (§7.2); this code decides
 // when to let go.

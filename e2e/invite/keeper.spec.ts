@@ -16,9 +16,9 @@ test("the keeper seals in two steps and the page never shows the value again", a
   expect(page.url()).not.toContain(code);
   await page.screenshot({ path: shot("keeper-choose-ar") });
 
-  await page.getByTestId("baby-1").getByText("بنت").click();
+  await page.getByTestId("baby-1").locator("label", { hasText: "بنت" }).click();
   await page.getByRole("button", { name: /توأم/ }).click();
-  await page.getByTestId("baby-2").getByText("ولد").click();
+  await page.getByTestId("baby-2").locator("label", { hasText: "ولد" }).click();
   await page.getByRole("button", { name: "اقفل السر" }).click();
   await expect(page.getByTestId("keeper-confirm")).toContainText("اخترت: بنت وولد");
   await page.screenshot({ path: shot("keeper-confirm-ar") });

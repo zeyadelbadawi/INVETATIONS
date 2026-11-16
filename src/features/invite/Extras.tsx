@@ -9,14 +9,14 @@ import { useState } from "react";
 import { getMessages } from "./messages";
 import { useInvite } from "./guest/GuestContext";
 import { useGames, useRecap, useWall } from "./games/hooks";
-import type { Game, RecapData, WallData } from "./games/types";
+import type { GamesData, RecapData, WallData } from "./games/types";
 
 const GameList = dynamic(() => import("./games/Games").then((m) => m.GameList), { ssr: false });
 const WishesWall = dynamic(() => import("./games/WishesWall").then((m) => m.WishesWall), { ssr: false });
 const RecapSection = dynamic(() => import("./games/RecapSection").then((m) => m.RecapSection), { ssr: false });
 const ShareCard = dynamic(() => import("./share/ShareCard"), { ssr: false });
 
-export type DemoExtras = { games?: Game[]; wall?: WallData; recap?: RecapData; shareOpen?: boolean };
+export type DemoExtras = { games?: GamesData; wall?: WallData; recap?: RecapData; shareOpen?: boolean };
 
 function Share({ startOpen }: { startOpen: boolean }) {
   const { me, event, locale } = useInvite();
@@ -39,9 +39,9 @@ function Share({ startOpen }: { startOpen: boolean }) {
 
 export function Extras({ demoExtras }: { demoExtras?: DemoExtras }) {
   const { event, status } = useInvite();
-  const liveGames = useGames(event.slug);
-  const liveWall = useWall(event.slug);
-  const liveRecap = useRecap(event.slug);
+  const liveGames = useGames();
+  const liveWall = useWall();
+  const liveRecap = useRecap();
   const games = demoExtras?.games ?? liveGames;
   const wall = demoExtras?.wall ?? liveWall;
   const recap = demoExtras?.recap ?? liveRecap;
@@ -49,7 +49,7 @@ export function Extras({ demoExtras }: { demoExtras?: DemoExtras }) {
   const closed = event.status === "cancelled" || event.status === "postponed";
   return (
     <>
-      {games && event.entitlements.games && !closed ? <GameList games={games} /> : null}
+      {games && event.entitlements.games && !closed ? <GameList data={games} /> : null}
       {wall && !closed ? <WishesWall wall={wall} /> : null}
       {closed ? null : <Share startOpen={demoExtras?.shareOpen ?? false} />}
       {recap && event.status === "ended" ? <RecapSection recap={recap} /> : null}

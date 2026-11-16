@@ -35,7 +35,7 @@ const server = await rolldown({ ...shared, input: { ssr: join(here, "ssr.tsx") }
 await server.write({ dir: join(outDir, "ssr"), format: "esm", entryFileNames: "[name].mjs", codeSplitting: false });
 
 const { renderDocument } = await import(pathToFileURL(join(outDir, "ssr", "ssr.mjs")).href);
-const manifest = JSON.parse(readFileSync(join(repo, "media/drafts/draft.opening/manifest.json"), "utf8"));
+const manifest = JSON.parse(readFileSync(join(repo, "public/media/drafts/draft.opening/manifest.json"), "utf8"));
 writeFileSync(join(outDir, "public", "index.html"), renderDocument({ manifest }));
 // Same page with a short stall limit, to see the "Continue without waiting" way out.
 writeFileSync(join(outDir, "public", "stall.html"), renderDocument({ manifest, splash: { stallMs: 1500 } }));

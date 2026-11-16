@@ -154,7 +154,7 @@ export default function Scratch({ babies, t, onDone }: RevealStyleProps) {
           <Card key={index} baby={baby} hint={t.scratchHint} onCleared={onCleared(index)} />
         ))}
       </div>
-      <p className="inv-hint">{t.scratchHint}</p>
+      <p className="inv-sr">{t.scratchHint}</p>
     </div>
   );
 }

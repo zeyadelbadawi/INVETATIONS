@@ -17,7 +17,7 @@ test("personal link: the address appears, the reply is saved, survives a reload 
 
   const rsvp = page.getByTestId("rsvp");
   await scrollTo(page, "#rsvp");
-  await rsvp.getByText("جاي إن شاء الله").click();
+  await rsvp.locator("label", { hasText: "جاي إن شاء الله" }).click();
   await rsvp.getByRole("button", { name: /زوّد: كبار/ }).click();
   await rsvp.getByRole("button", { name: /زوّد: أطفال/ }).click();
   await page.screenshot({ path: shot("rsvp-form-ar") });
@@ -32,7 +32,7 @@ test("personal link: the address appears, the reply is saved, survives a reload 
 
   await scrollTo(page, "#rsvp");
   await page.getByTestId("rsvp-answer").getByRole("button", { name: "غيّر ردّي" }).click();
-  await rsvp.getByText("مش هقدر").click();
+  await rsvp.locator("label", { hasText: "مش هقدر" }).click();
   await rsvp.getByRole("button", { name: "ابعت الرد" }).click();
   await expect(page.getByTestId("rsvp-answer")).toContainText("هتوحشنا");
   await page.reload();
@@ -70,7 +70,7 @@ test("group link: joining shows the return code once, then the badge and the liv
   await expect(page.getByTestId("badge")).toContainText("منى");
   await expect(page.getByTestId("rejoin")).toHaveCount(0);
   await scrollTo(page, "#rsvp");
-  await page.getByTestId("rsvp").getByText("جاي إن شاء الله").click();
+  await page.getByTestId("rsvp").locator("label", { hasText: "جاي إن شاء الله" }).click();
   await page.getByTestId("rsvp").getByRole("button", { name: "ابعت الرد" }).click();
   await expect(page.getByTestId("rsvp-answer")).toContainText("مستنيينك");
 });

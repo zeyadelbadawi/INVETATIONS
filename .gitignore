@@ -49,3 +49,5 @@ supabase/.temp
 # tooling output
 /test-results
 /playwright-report
+
+/e2e/invite/.results

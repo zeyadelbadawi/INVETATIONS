@@ -11,7 +11,8 @@ export type LivePayload = {
   phase: "idle" | "countdown" | "revealed";
   revealAt: string | null;
   answer: ("boy" | "girl")[] | null;
-  scores: { teamId: string; score: number; players: number }[];
+  revealStyle: "balloon" | "scratch" | null;
+  scores: { teamId: string; key: string; score: number; players: number }[];
 };
 
 export async function readLive(event: PublicEvent): Promise<LivePayload> {
@@ -26,7 +27,13 @@ export async function readLive(event: PublicEvent): Promise<LivePayload> {
   }
 
   const current = (live?.public_payload ?? {}) as { revealAt?: string; answer?: ("boy" | "girl")[] };
-  const { data: scores } = await db.from("team_scores").select("team_id, score, active_players").eq("event_id", event.id);
+  const [{ data: scores }, { data: teams }, { data: reveal }] = await Promise.all([
+    db.from("team_scores").select("team_id, score, active_players").eq("event_id", event.id),
+    db.from("teams").select("id, key").eq("event_id", event.id).order("position"),
+    // Only the style: never the sealed columns.
+    db.from("reveals").select("style").eq("event_id", event.id).maybeSingle(),
+  ]);
+  const scoreByTeam = new Map((scores ?? []).map((s) => [s.team_id, s]));
 
   // Gated events expose only phase and time until the passcode is given.
   const gated = event.hasPasscode;
@@ -36,6 +43,15 @@ export async function readLive(event: PublicEvent): Promise<LivePayload> {
     phase: (live?.phase ?? "idle") as LivePayload["phase"],
     revealAt: current.revealAt ?? null,
     answer: live?.phase === "revealed" && !gated ? (current.answer ?? null) : null,
-    scores: gated ? [] : (scores ?? []).map((s) => ({ teamId: s.team_id, score: Number(s.score), players: s.active_players })),
+    revealStyle: (reveal?.style as LivePayload["revealStyle"]) ?? null,
+    // Every team appears, in order, even before anyone has scored.
+    scores: gated
+      ? []
+      : (teams ?? []).map((t) => ({
+          teamId: t.id,
+          key: t.key,
+          score: Number(scoreByTeam.get(t.id)?.score ?? 0),
+          players: scoreByTeam.get(t.id)?.active_players ?? 0,
+        })),
   };
 }

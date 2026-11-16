@@ -33,7 +33,7 @@ function toInviteEvent(event: PublicEvent): InviteEvent {
     order: gated ? [] : event.order,
     preview: event.preview,
     settings: { sharingEnabled: event.settings.sharingEnabled, rosterVisible: event.settings.rosterVisible, lockTeams: event.settings.lockTeams },
-    entitlements: { games: event.entitlements.games, share_cards: event.entitlements.share_cards, reveal: event.entitlements.reveal, voice: event.entitlements.voice },
+    entitlements: { games: event.entitlements.games, share_cards: event.entitlements.share_cards, reveal: event.entitlements.reveal, voice: event.entitlements.voice, photos: event.entitlements.photos },
   };
 }
 

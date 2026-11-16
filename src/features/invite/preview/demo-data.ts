@@ -5,11 +5,11 @@ import type { Template } from "@/templates/types";
 import type { Locale } from "@/i18n/config";
 import { getMessages } from "../messages";
 import type { DemoExtras } from "../Extras";
-import type { Game, RecapData, WallData } from "../games/types";
+import type { GameItem, GamesData, RecapData, WallData } from "../games/types";
 import type { GuestMe, LivePayload } from "../types";
 
 const L = (ar: string, en: string) => ({ ar, en });
-const ok = async () => ({ ok: true as const, score: 5 });
+const ok = async () => ({ ok: true as const, points: 5 });
 
 export function demoMe(template: Template, locale: Locale, guestBlocks: GuestMe["guestBlocks"], joined: boolean): GuestMe {
   const t = getMessages(locale);
@@ -37,9 +37,14 @@ export function demoLive(template: Template, phase: LivePayload["phase"], reveal
   };
 }
 
-function demoGames(kind: Template["kind"]): Game[] {
-  const quiz: Game = {
+const noResults = { answered: [] as string[], myPoints: 0, tally: null, results: null };
+
+function demoGames(kind: Template["kind"]): GamesData {
+  const quiz: GameItem = {
+    ...noResults,
     id: "g1",
+    kind: "quiz",
+    state: "open",
     view: {
       kind: "quiz",
       state: "open",
@@ -50,26 +55,14 @@ function demoGames(kind: Template["kind"]): Game[] {
       pointsCorrect: 10,
       speedBonus: 0,
       questionIds: ["q1"],
-      questions: [
-        {
-          id: "q1",
-          prompt: L("اتقابلوا أول مرة فين؟", "Where did they first meet?"),
-          image: null,
-          options: [
-            { id: "a", label: L("في الجامعة", "At university") },
-            { id: "b", label: L("في فرح صاحبهم", "At a friend's wedding") },
-            { id: "c", label: L("في الشغل", "At work") },
-          ],
-        },
-      ],
+      questions: null,
     },
-    doneIds: [],
-    earned: 0,
-    serveNext: async () => null,
-    answer: ok,
   };
-  const vote: Game = {
+  const vote: GameItem = {
+    ...noResults,
     id: "g2",
+    kind: "vote",
+    state: "open",
     view: {
       kind: "vote",
       state: "open",
@@ -80,47 +73,35 @@ function demoGames(kind: Template["kind"]): Game[] {
       minTallyVotes: 5,
       pointsParticipation: 2,
       pointsMatch: 5,
-      questions: [
-        {
-          id: "v1",
-          prompt: L("مين بيتأخر دايماً؟", "Who's always late?"),
-          options: [
-            { id: "him", label: L("هو", "Him") },
-            { id: "her", label: L("هي", "Her") },
-          ],
-        },
-      ],
+      questions: [{ id: "v1", prompt: L("مين بيتأخر دايماً؟", "Who's always late?"), options: [{ id: "him", label: L("هو", "Him") }, { id: "her", label: L("هي", "Her") }] }],
     },
-    mine: { v1: "him" },
+    answered: ["v1"],
     tally: { questions: [{ id: "v1", total: 23, options: [{ id: "him", count: 15 }, { id: "her", count: 8 }], numbers: null, suppressed: null }] },
-    answer: ok,
   };
-  const prediction: Game = {
+  const prediction: GameItem = {
+    ...noResults,
     id: "g3",
+    kind: "prediction",
+    state: "open",
     view: {
       kind: "prediction",
       state: "open",
       title: L("توقعات اليوم", "Predictions for the day"),
       intro: null,
-      closesAt: null,
+      pointsParticipation: 2,
+      pointsExact: 10,
+      pointsClose: 5,
       questions: [
-        { id: "p1", prompt: L("الزفة هتتأخر كام دقيقة؟", "How many minutes late will the zaffa start?"), type: "number", min: 0, max: 180, unit: L("دقيقة", "minutes") },
-        {
-          id: "p2",
-          prompt: L("مين هيعيط الأول؟", "Who cries first?"),
-          type: "choice",
-          options: [
-            { id: "mum", label: L("ماما", "Mum") },
-            { id: "dad", label: L("بابا", "Dad") },
-          ],
-        },
+        { id: "p1", prompt: L("الزفة هتتأخر كام دقيقة؟", "How many minutes late will the zaffa start?"), type: "number", min: 0, max: 180, unit: L("دقيقة", "minutes"), tolerance: 5 },
+        { id: "p2", prompt: L("مين هيعيط الأول؟", "Who cries first?"), type: "choice", truthFromReveal: false, options: [{ id: "mum", label: L("ماما", "Mum") }, { id: "dad", label: L("بابا", "Dad") }] },
       ],
     },
-    mine: {},
-    answer: ok,
   };
-  const clues: Game = {
+  const clues: GameItem = {
+    ...noResults,
     id: "g4",
+    kind: "clues",
+    state: "open",
     view: {
       kind: "clues",
       state: "open",
@@ -132,24 +113,29 @@ function demoGames(kind: Template["kind"]): Game[] {
         { id: "c2", locked: true, revealAt: new Date(Date.now() + 86_400_000).toISOString() },
       ],
     },
-    seenIds: [],
-    markSeen: ok,
-    switchTeam: ok,
   };
-  return kind === "gender_reveal" ? [clues, vote, prediction] : [quiz, vote, prediction];
+  return {
+    games: kind === "gender_reveal" ? [clues, vote, prediction] : [quiz, vote, prediction],
+    answer: ok,
+    serve: async () => ({ ok: true, done: true }),
+    switchTeam: kind === "gender_reveal" ? ok : null,
+    refresh: () => {},
+  };
 }
 
 function demoWall(locale: Locale): WallData {
-  const pickText = (ar: string, en: string) => (locale === "ar" ? ar : en);
+  const say = (ar: string, en: string) => (locale === "ar" ? ar : en);
+  const post = { kind: "text" as const, teamId: null, mediaUrl: null, createdAt: "" };
   return {
     canPost: true,
     voiceEnabled: true,
+    photosEnabled: true,
     postText: ok,
-    postVoice: ok,
+    postMedia: ok,
     report: async () => {},
     posts: [
-      { id: "w1", kind: "text", author: pickText("خالتو منى", "Aunt Mona"), text: pickText("ربنا يتمم بخير ويسعدكم يا حبايبي", "May your days together be full of joy"), audioUrl: null, status: "visible", mine: false, createdAt: "" },
-      { id: "w2", kind: "text", author: pickText("كريم", "Karim"), text: pickText("أخيراً! مستني الفرح من سنين", "Finally! I've waited years for this wedding"), audioUrl: null, status: "pending", mine: true, createdAt: "" },
+      { ...post, id: "w1", author: say("خالتو منى", "Aunt Mona"), body: say("ربنا يتمم بخير ويسعدكم يا حبايبي", "May your days together be full of joy"), status: "visible", mine: false },
+      { ...post, id: "w2", author: say("كريم", "Karim"), body: say("أخيراً! مستني الفرح من سنين", "Finally! I've waited years for this wedding"), status: "pending", mine: true },
     ],
   };
 }

@@ -30,7 +30,7 @@ Digital invitation / event-page platform (placeholder brand: Lamma / لَمّة)
 - `src/scenes/**` — scroll-scene player. `src/play/**` — pure game modules and question banks.
 - `src/lib/**` — server libraries (guest sessions, reveal, media, jobs, security).
 - `src/features/**` — feature UI and server actions.
-- `supabase/migrations/**` — schema; `tools/sequences/**` — scene encoder; `media/drafts/**` — draft scenes.
+- `supabase/migrations/**` — schema; `tools/sequences/**` — scene encoder; `public/media/drafts/**` — draft scenes (served as `/media/drafts`).
 
 ## Commands
 ```bash
@@ -41,6 +41,6 @@ pnpm exec vitest run              # unit + integration tests (need the local dat
 pnpm exec next typegen && pnpm exec tsc --noEmit
 pnpm exec eslint .
 pnpm exec next build
-node tools/sequences/build-video.mjs --input shot.mp4 --id brand.scene --out media/drafts --draft
+node tools/sequences/build-video.mjs --input shot.mp4 --id brand.scene --out public/media/drafts --draft
 ```
 Copy `.env.example` to `.env.local` first. Tests load `.env.local` themselves.

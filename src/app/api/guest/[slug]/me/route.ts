@@ -18,9 +18,11 @@ export const GET = guestRead(async ({ event, guest }) => {
   const [rsvp, teams, household, guestBlocks] = await Promise.all([
     rsvpQuery.maybeSingle(),
     db.from("teams").select("id, key, name_ar, name_en, color").eq("event_id", event.id).order("position"),
-    // On a household link, members can pick themselves again on a new browser.
-    personal
-      ? db.from("players").select("id, name").eq("event_id", event.id).eq("invitation_id", guest.invitation.id).is("removed_at", null)
+    // Players already on this invitation, so someone on a new browser can pick
+    // themselves again: directly on a household link, with their 6-digit code on
+    // a shared one. Shared links list names only where the roster is visible.
+    !guest.player && (personal || event.settings.rosterVisible)
+      ? db.from("players").select("id, name").eq("event_id", event.id).eq("invitation_id", guest.invitation.id).is("removed_at", null).order("created_at").limit(200)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     getGuestBlocks(event.id),
   ]);

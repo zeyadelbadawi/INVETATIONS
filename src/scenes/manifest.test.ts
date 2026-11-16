@@ -18,7 +18,7 @@ import {
 import { buildPageSceneData, readPageSceneData, serializePageSceneData, SCENE_DATA_ID } from "./page-data";
 
 const draftJson = (): unknown =>
-  JSON.parse(readFileSync(resolve(__dirname, "../../media/drafts/draft.opening/manifest.json"), "utf8"));
+  JSON.parse(readFileSync(resolve(__dirname, "../../public/media/drafts/draft.opening/manifest.json"), "utf8"));
 const draft = (): VideoManifest => parseManifest(draftJson());
 
 describe("scene URLs", () => {

@@ -3,7 +3,7 @@
 // desktop 16:9 + mobile 4:5 H.264 (GOP 6, no B-frames, faststart), posters, timing curve, WebCodecs decode index, manifest.
 //
 // Usage:
-//   node tools/sequences/build-video.mjs --input shot.mp4 --id brand.scene --out media/drafts [--draft]
+//   node tools/sequences/build-video.mjs --input shot.mp4 --id brand.scene --out public/media/drafts [--draft]
 //        [--focal 0.5,0.5] [--ease-in 0.06] [--ease-out 0.12] [--no-motion]
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -22,7 +22,7 @@ if (!/^[a-z0-9]+(\.[a-z0-9-]+)+$/.test(args.id)) {
 
 const draft = Boolean(args.draft);
 const [focalX, focalY] = (args.focal ?? "0.5,0.5").split(",").map(Number);
-const outDir = join(args.out ?? "media/drafts", args.id);
+const outDir = join(args.out ?? "public/media/drafts", args.id);
 mkdirSync(outDir, { recursive: true });
 
 const VARIANTS = draft

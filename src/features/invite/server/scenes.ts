@@ -25,7 +25,7 @@ async function readManifest(id: string, rev: number): Promise<VideoManifest> {
     if (!response.ok) throw new Error(`scene manifest ${response.status}`);
     return parseManifest(await response.json());
   }
-  const file = path.join(process.cwd(), "media", "drafts", id, "manifest.json");
+  const file = path.join(process.cwd(), "public", "media", "drafts", id, "manifest.json");
   return parseManifest(JSON.parse(await readFile(file, "utf8")));
 }
 

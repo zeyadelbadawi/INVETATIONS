@@ -1,5 +1,5 @@
 // Tiny static server for the test page: the built bundle plus the committed draft scene.
-// /media/<any scene id>/<file> serves media/drafts/draft.opening/<file>, so one draft can stand in
+// /media/<any scene id>/<file> serves public/media/drafts/draft.opening/<file>, so one draft can stand in
 // for several scenes. `throttle(bytesPerSecond)` slows the .mp4 responses down (0 = full speed).
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -7,7 +7,7 @@ import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const MEDIA_DIR = join(repo, "media/drafts/draft.opening");
+const MEDIA_DIR = join(repo, "public/media/drafts/draft.opening");
 const TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",

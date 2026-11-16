@@ -59,7 +59,7 @@ export function PreviewApp({ scenes }: { scenes: Record<string, LoadedScene> }) 
       order: enabled.map((block) => block.id),
       preview: draft.content.preview,
       settings: { sharingEnabled: draft.settings?.sharingEnabled ?? true, rosterVisible: draft.settings?.rosterVisible ?? true, lockTeams: draft.settings?.lockTeams ?? false },
-      entitlements: { games: true, share_cards: true, reveal: true, voice: true },
+      entitlements: { games: true, share_cards: true, reveal: true, voice: true, photos: true },
     };
     const guestBlocks = enabled.filter((block) => GUEST_ONLY_BLOCKS.has(block.type));
     const reveal = draft.demo?.reveal ?? "idle";

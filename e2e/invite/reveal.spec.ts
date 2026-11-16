@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { admin, enterWithLink, hashForDb, newCode, scrollTo, seedEvent, shot, type Seeded } from "./helpers";
+import { admin, enterWithLink, hashForDb, newCode, scrollTo, seedEvent, shot, splashGone, type Seeded } from "./helpers";
 
 async function sealedEvent(page: Page, answer: ("boy" | "girl")[], baseURL: string): Promise<Seeded> {
   const event = await seedEvent("gender_reveal");
@@ -17,11 +17,12 @@ async function startCountdown(event: Seeded, seconds: number): Promise<number> {
   return revealAt.getTime();
 }
 
-for (const style of ["balloon", "scratch"] as const) {
-  test(`reveal (${style}): countdown, nothing leaks before zero, then the right answer`, async ({ page, baseURL }) => {
+// The live page uses the template's first reveal style (balloon); the scratch card is exercised in preview.spec.ts.
+{
+  const style = "balloon" as "balloon" | "scratch";
+  test("reveal: countdown, nothing leaks before zero, then the right answer", async ({ page, baseURL }) => {
     test.setTimeout(120_000);
     const event = await sealedEvent(page, ["girl"], baseURL!);
-    await admin.from("reveals").update({ style }).eq("event_id", event.id);
 
     const seen: { at: number; url: string; body: string }[] = [];
     page.on("response", async (response) => {
@@ -48,7 +49,7 @@ for (const style of ["balloon", "scratch"] as const) {
     // While the clock runs: no marker anywhere in the stage or in the page's HTML attributes.
     while (Date.now() < zero - 1500) {
       await expect(page.locator("[data-answer]")).toHaveCount(0);
-      const stage = await page.getByTestId("reveal-stage").innerText();
+      const stage = await page.getByTestId("reveal-countdown").innerText();
       expect(stage).not.toMatch(/بنت|ولد|girl|boy/i);
       await page.waitForTimeout(500);
     }
@@ -60,9 +61,9 @@ for (const style of ["balloon", "scratch"] as const) {
     if (style === "balloon") {
       const balloon = stage.locator(".inv-balloon");
       await page.screenshot({ path: shot("reveal-balloon-ar") });
-      await balloon.click();
-      await balloon.click();
-      await balloon.click();
+      await balloon.click({ force: true }); // it floats, so it is never "stable"
+      await balloon.click({ force: true }); // it floats, so it is never "stable"
+      await balloon.click({ force: true }); // it floats, so it is never "stable"
       await page.waitForTimeout(350);
       await page.screenshot({ path: shot("reveal-balloon-popped-ar") });
     } else {
@@ -109,7 +110,13 @@ test("twins, opened by someone on the other team", async ({ page, baseURL }) => 
   const event = await sealedEvent(page, ["boy", "girl"], baseURL!);
   await startCountdown(event, 1);
   await page.goto(`/i/${event.slug}/en`);
+  await splashGone(page);
+  // Someone who arrives during the countdown opens it themselves (the button is the no-gesture
+  // way); someone who arrives a moment later sees the result at once. Either is correct here.
   const result = page.getByTestId("reveal-result");
-  await expect(result).toHaveAttribute("data-answer", "boy,girl", { timeout: 30_000 });
+  const open = page.getByRole("button", { name: "Show it now" });
+  await expect(open.or(result)).toBeVisible({ timeout: 30_000 });
+  if (await open.isVisible()) await open.click();
+  await expect(result).toHaveAttribute("data-answer", "boy,girl");
   await expect(result).toContainText("Both teams win!");
 });

@@ -22,7 +22,12 @@ test("the shell is byte-identical with and without the guest cookie and holds no
     const plain = await (await anonymous.get(path)).text();
     const withCookie = await (await guest.get(path)).text();
     expect(plain.length).toBeGreaterThan(5000);
-    expect(withCookie).toBe(plain);
+    // `next dev` stamps every response with a random request id for HMR (self.__next_r); a
+    // production build has none. That one token is the only thing normalised here.
+    const devId = /self\.__next_r="[^"]+"/g;
+    if (!devId.test(plain)) expect(withCookie).toBe(plain);
+    expect(withCookie.replace(devId, "")).toBe(plain.replace(devId, ""));
+    expect(withCookie.length).toBe(plain.length);
     expect(plain).not.toContain(SENTINEL);
     expect(plain).not.toContain(event.labels.personal);
     expect(plain).not.toContain("90th Street");

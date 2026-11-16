@@ -77,6 +77,11 @@ const nextConfig: NextConfig = {
         headers: [...baseHeaders, ...guestHeaders, { key: "Content-Security-Policy", value: csp("'self'") }],
       },
       { source: "/i/:path*", headers: guestHeaders },
+      // The editor preview runs in a sandboxed iframe with an opaque origin; it can
+      // only load fonts and draft scene files if they are readable cross-origin.
+      // Both are public, static files.
+      { source: "/_next/static/media/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+      { source: "/media/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
       { source: "/l/:path*", headers: [...guestHeaders, { key: "Cache-Control", value: "private, no-store" }] },
       { source: "/k", headers: [...guestHeaders, { key: "Cache-Control", value: "private, no-store" }] },
     ];

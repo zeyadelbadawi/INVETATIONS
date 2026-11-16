@@ -19,7 +19,7 @@ export type InviteEvent = {
   order: string[];
   preview: EventContent["preview"];
   settings: Pick<EventSettings, "sharingEnabled" | "rosterVisible" | "lockTeams">;
-  entitlements: { games: boolean; share_cards: boolean; reveal: boolean; voice: boolean };
+  entitlements: { games: boolean; share_cards: boolean; reveal: boolean; voice: boolean; photos: boolean };
 };
 
 export type RevealStyle = "balloon" | "scratch";
@@ -47,5 +47,6 @@ export type LivePayload = {
   phase: "idle" | "countdown" | "revealed";
   revealAt: string | null;
   answer: Answer | null;
-  scores: { teamId: string; score: number; players: number }[];
+  revealStyle?: "balloon" | "scratch" | null;
+  scores: { teamId: string; key?: string; score: number; players: number }[];
 };

@@ -75,9 +75,9 @@ function draw(canvas: HTMLCanvasElement, host: HTMLElement, team: string, input:
   context.fillText(input.line, w / 2, band * 0.26 + 150);
 
   context.fillStyle = ink;
-  const nameSize = fitText(context, input.name, display, "700", 230, w - 140);
+  const nameSize = fitText(context, input.name, display, "700", 200, w - 140);
   context.font = `700 ${nameSize}px ${display}`;
-  const nameY = band + (h - band) * 0.42;
+  const nameY = band + (h - band) * 0.5;
   context.fillText(input.name, w / 2, nameY);
 
   if (input.score) {

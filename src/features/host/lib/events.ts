@@ -18,7 +18,7 @@ import type { Template } from "@/templates/types";
 import { auditActor, loadEventFor } from "./access";
 import { HostError } from "./errors";
 import { hashPasscode, PASSCODE_MAX_LENGTH, PASSCODE_MIN_LENGTH } from "./passcode";
-import { slugBase } from "./text";
+import { slugBase, weakPasscode } from "./text";
 import { TIMEZONES, zonedToIso } from "./time";
 
 type JsonValue = NonNullable<Json>;
@@ -187,7 +187,10 @@ export const settingsInputSchema = z.object({
   passcode: z.discriminatedUnion("mode", [
     z.object({ mode: z.literal("keep") }),
     z.object({ mode: z.literal("clear") }),
-    z.object({ mode: z.literal("set"), value: z.string().min(PASSCODE_MIN_LENGTH).max(PASSCODE_MAX_LENGTH) }),
+    z.object({
+      mode: z.literal("set"),
+      value: z.string().min(PASSCODE_MIN_LENGTH).max(PASSCODE_MAX_LENGTH).refine((value) => !weakPasscode(value)),
+    }),
   ]),
 });
 export type SettingsInput = z.infer<typeof settingsInputSchema>;
@@ -203,7 +206,10 @@ export async function updateSettings(
 ): Promise<{ liveSlug: string | null }> {
   const event = await loadEventFor(db, actor, eventId);
   const parsed = settingsInputSchema.safeParse(raw);
-  if (!parsed.success) throw new HostError("invalid");
+  if (!parsed.success) {
+    const passcode = parsed.error.issues.some((issue) => issue.path[0] === "passcode");
+    throw new HostError("invalid", passcode ? { field: "passcode" } : undefined);
+  }
   const input = parsed.data;
 
   const toIso = (local: string) => (local === "" ? null : zonedToIso(local, input.timezone));
@@ -282,9 +288,13 @@ export async function publishEvent(
   if (!paid) throw new HostError("no_plan");
 
   const content = contentSchema.safeParse(event.content);
-  if (!content.success) throw new HostError("invalid_content");
+  const theme = themeSchema.safeParse(event.theme);
+  if (!content.success || !theme.success) throw new HostError("invalid_content");
   const template = getTemplate(event.template_id, event.template_version);
   if (!template) throw new HostError("invalid_content");
+  // The same template checks as a draft save (fields, lengths, palette, font
+  // pair), in case the draft was written another way (review F11).
+  if (!fitTemplate(template, content.data, theme.data)) throw new HostError("invalid_content");
   const missing = missingRequired(template, content.data);
   if (missing.length > 0) throw new HostError("missing_required", { fields: missing });
 
@@ -295,7 +305,9 @@ export async function publishEvent(
   const { data: updated, error } = await db
     .from("events")
     .update({
-      published_content: { public: split.public, guest: split.guest, order: split.order } as unknown as JsonValue,
+      // The theme is published with the content: a draft palette change is not
+      // live until the host publishes again (review F11).
+      published_content: { public: split.public, guest: split.guest, order: split.order, theme: theme.data } as unknown as JsonValue,
       published_version: version,
       status: "published",
     })

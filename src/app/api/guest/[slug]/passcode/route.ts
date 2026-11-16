@@ -4,15 +4,15 @@ import { fail, json } from "@/lib/guest/route";
 import {
   checkPasscode,
   failureKey,
-  PASSCODE_ATTEMPTS_PER_EVENT,
+  ipFailureKey,
   PASSCODE_ATTEMPTS_PER_IP,
   PASSCODE_FAILURES,
+  PASSCODE_FAILURES_PER_IP,
   readPasscodeHash,
-  recentFailures,
   setPasscodeCookie,
 } from "@/lib/guest/passcode";
 import { clientIp, isSameOriginJsonPost } from "@/lib/security/origin";
-import { withinLimit } from "@/lib/security/rate-limit";
+import { refundLimit, withinLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({ passcode: z.string().min(1).max(64) });
 
@@ -34,23 +34,24 @@ export async function POST(request: Request, ctx: RouteContext<"/api/guest/[slug
   const parsed = schema.safeParse(body);
   if (!parsed.success) return fail("invalid", 400);
 
-  // No session yet: address (high ceiling) and event, then the event's count
-  // of wrong guesses, read without spending one.
-  const [ipOk, eventOk] = await Promise.all([
-    withinLimit(`pc:ip:${clientIp(request)}`, PASSCODE_ATTEMPTS_PER_IP),
-    withinLimit(`pc:try:${event.id}`, PASSCODE_ATTEMPTS_PER_EVENT),
-  ]);
-  if (!ipOk || !eventOk) return fail("slow_down", 429);
-  if ((await recentFailures(event.id)) >= PASSCODE_FAILURES.max) return fail("locked", 429);
+  // No session yet (security rule 35). Slots are reserved before the slow
+  // check and given back when the passcode is right (review F3): see
+  // src/lib/guest/passcode.ts for the three budgets.
+  const ip = clientIp(request);
+  if (!(await withinLimit(`pc:ip:${ip}`, PASSCODE_ATTEMPTS_PER_IP))) return fail("slow_down", 429);
+  const ipKey = ipFailureKey(event.id, ip);
+  if (!(await withinLimit(ipKey, PASSCODE_FAILURES_PER_IP))) return fail("slow_down", 429);
+  const eventKey = failureKey(event.id);
+  const eventOk = await withinLimit(eventKey, PASSCODE_FAILURES);
 
   // The hash is read fresh: the cached event only knows that one exists.
   const stored = await readPasscodeHash(event.id);
   if (!stored) return fail("not_found", 404);
   if (!(await checkPasscode(stored, parsed.data.passcode))) {
-    await withinLimit(failureKey(event.id), PASSCODE_FAILURES);
-    return fail("wrong_passcode", 401);
+    return eventOk ? fail("wrong_passcode", 401) : fail("locked", 429);
   }
 
+  await Promise.all([refundLimit(ipKey, PASSCODE_FAILURES_PER_IP), refundLimit(eventKey, PASSCODE_FAILURES)]);
   await setPasscodeCookie(event.id, stored);
   return json({ ok: true });
 }

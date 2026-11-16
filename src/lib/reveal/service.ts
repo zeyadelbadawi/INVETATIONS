@@ -60,26 +60,24 @@ export async function keeperSeal(code: string, deviceToken: string, answer: Answ
   }
 
   const sealed = sealAnswer(answer, r.id, r.event_id);
-  // The guard on reveal_at closes the race with a countdown starting right now.
-  const { data, error } = await adminDb()
-    .from("reveals")
-    .update({
-      ciphertext: bytea(sealed.ciphertext),
-      nonce: bytea(sealed.nonce),
-      key_version: sealed.keyVersion,
-      keeper_device_hash: deviceHash,
-      sealed_at: new Date().toISOString(),
-      seal_count: r.seal_count + 1,
-    })
-    .eq("id", r.id)
-    .is("reveal_at", null)
-    .is("revealed_at", null)
-    .select("id");
+  // One guarded statement binds the device, stores the ciphertext and counts
+  // the seal (review F7): it writes only while no countdown has started and the
+  // link is unbound or bound to this device, so of two devices racing on a
+  // fresh link exactly one is stored and the other is told "other_device".
+  const { data, error } = await adminDb().rpc("reveal_seal", {
+    p_reveal_id: r.id,
+    p_device_hash: deviceHash,
+    p_ciphertext: bytea(sealed.ciphertext),
+    p_nonce: bytea(sealed.nonce),
+    p_key_version: sealed.keyVersion,
+  });
   if (error) throw new Error(`seal failed: ${error.message}`);
-  if (!data || data.length === 0) return "locked";
+  const row = data?.[0];
+  const state = (row?.out_state ?? "not_found") as KeeperState;
+  if (state !== "sealed") return state;
 
   // Never record the value or anything derived from it.
-  await audit({ actorKind: "keeper", action: "reveal.sealed", eventId: r.event_id, metadata: { seal_count: r.seal_count + 1 } });
+  await audit({ actorKind: "keeper", action: "reveal.sealed", eventId: r.event_id, metadata: { seal_count: row!.out_seal_count } });
   return "sealed";
 }
 

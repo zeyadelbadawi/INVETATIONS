@@ -17,12 +17,14 @@ export type GameItem = {
   state: GameState;
   view: GameView;
   answered: string[]; // question ids this player has answered
-  myPoints: number;
+  myPoints: number | null; // null while a quiz is open: points show after it closes
+
   tally: Tally | null;
   results: unknown;
 };
 
-export type SubmitResult = { ok: true; points: number } | { ok: false; error: string };
+// `points` is absent for a quiz answer: whether it scored is not told until the quiz closes.
+export type SubmitResult = { ok: true; points: number | null } | { ok: false; error: string };
 export type ServeResult = { ok: true; done: true } | { ok: true; done: false; question: QuizQuestionView; servedAt: number; seconds: number | null } | { ok: false; error: string };
 export type AnswerValue = { optionId: string } | { value: string | number } | { seen: true };
 

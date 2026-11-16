@@ -53,6 +53,28 @@ describe("secret keeper", () => {
     expect(await issueKeeperLink(event.id, host.id)).toBeNull();
   });
 
+  // Review F7: binding and storing are one guarded statement.
+  it("of two devices sealing at once on a fresh link, exactly one wins and its answer is stored", async () => {
+    for (let round = 0; round < 5; round++) {
+      const { event, host } = await makeLiveEvent();
+      const code = (await issueKeeperLink(event.id, host.id))!;
+      const [one, two] = await Promise.all([keeperSeal(code, "device-boy", ["boy"]), keeperSeal(code, "device-girl", ["girl"])]);
+      expect([one, two].sort()).toEqual(["other_device", "sealed"]);
+      const winner = one === "sealed" ? { device: "device-boy", answer: ["boy"] } : { device: "device-girl", answer: ["girl"] };
+      const { data: r } = await admin.from("reveals").select("id, ciphertext, nonce, key_version, seal_count").eq("event_id", event.id).single();
+      expect(r!.seal_count).toBe(1);
+      const opened = openAnswer(
+        Buffer.from((r!.ciphertext as string).slice(2), "hex"),
+        Buffer.from((r!.nonce as string).slice(2), "hex"),
+        r!.key_version!,
+        r!.id,
+        event.id,
+      );
+      expect(opened).toEqual(winner.answer);
+      expect((await keeperStatus(code, winner.device)).state).toBe("sealed");
+    }
+  });
+
   it("a reissued link kills the old one", async () => {
     const { event, host } = await makeLiveEvent();
     const first = (await issueKeeperLink(event.id, host.id))!;

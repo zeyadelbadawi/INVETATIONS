@@ -1,7 +1,7 @@
 import "server-only";
 import sharp from "sharp";
 import { adminDb } from "@/lib/supabase/admin";
-import { sniff } from "@/lib/media/sniff";
+import { isAudioOnly, sniff } from "@/lib/media/sniff";
 
 const MAX_INPUT_PIXELS = 40_000_000;   // refuses decompression bombs before decoding
 const MAX_EDGE = 1600;
@@ -56,6 +56,8 @@ export async function processMedia(mediaId: string): Promise<"processed" | "reje
     }
   } else {
     if (input.length > MAX_AUDIO_BYTES) return reject();
+    // A voice note must not carry a picture (review F11).
+    if (!isAudioOnly(input, detected.mime)) return reject();
     output = input;
     mime = detected.mime;
   }

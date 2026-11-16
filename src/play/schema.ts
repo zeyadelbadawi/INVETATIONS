@@ -1,6 +1,7 @@
 // Building blocks shared by every game module's schemas. All objects are strict:
 // an unknown key (say, a stray `correct: true`) fails validation instead of being
 // stored in the public config (security rule 22).
+import "@/lib/zod-jitless";
 import { z } from "zod";
 
 // Matches the `game_answers.question_id` check in the database.

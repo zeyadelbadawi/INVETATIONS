@@ -85,6 +85,7 @@ export async function getPublicEvent(slug: string): Promise<PublicEvent | null> 
   const published = e.published_content as unknown as {
     public: Pick<PublicEvent, "fields" | "blocks" | "music" | "preview">;
     order?: string[];
+    theme?: unknown;
   };
   return {
     id: e.id,
@@ -99,7 +100,11 @@ export async function getPublicEvent(slug: string): Promise<PublicEvent | null> 
     endsAt: e.ends_at,
     timezone: e.timezone,
     hasPasscode: e.passcode_hash !== null,
-    theme: themeSchema.catch({}).parse(e.theme),
+    // The theme published with the content, so draft edits do not go live
+    // before the host publishes. Events published before the theme was part of
+    // the snapshot have none; for them the event's theme column is used until
+    // their next publish (backward compatible, review F11).
+    theme: themeSchema.catch({}).parse(published.theme !== undefined ? published.theme : e.theme),
     settings: settingsSchema.parse(settingsSchema.safeParse(e.settings).success ? e.settings : {}),
     entitlements,
     fields: published.public.fields,

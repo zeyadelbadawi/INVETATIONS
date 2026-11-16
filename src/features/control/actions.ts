@@ -2,9 +2,9 @@
 
 import "server-only";
 import { z } from "zod";
-import { requireEventAccess, requireStaff } from "@/lib/events/access";
+import { requireEventAccess } from "@/lib/events/access";
 import { addStarterGames, saveGame, setGameState, setTruth, settleGame } from "@/features/control/games";
-import { highlightedPostIds, removePlayer, renamePlayer, setPlayerApproved, setPostHighlighted, setPostStatus, staffTakedown } from "@/features/control/lib";
+import { highlightedPostIds, removePlayer, renamePlayer, setPlayerApproved, setPostHighlighted, setPostStatus } from "@/features/control/lib";
 import { readRevealStyle, setRevealStyle, type RevealStyleState, type SetStyleResult } from "@/features/control/reveal-style";
 import { cancelReveal, issueKeeperLink, startReveal } from "@/lib/reveal/service";
 import { adminDb } from "@/lib/supabase/admin";
@@ -82,11 +82,6 @@ export async function revealStyleState(eventId: string): Promise<RevealStyleStat
 export async function chooseRevealStyle(eventId: string, style: "balloon" | "scratch"): Promise<SetStyleResult> {
   const actor = await requireEventAccess(id.parse(eventId), "manage_reveal");
   return setRevealStyle(eventId, actor, z.enum(["balloon", "scratch"]).parse(style));
-}
-
-export async function takedownPost(postId: string): Promise<boolean> {
-  const staff = await requireStaff(["admin", "support"]);
-  return staffTakedown(staff.userId, id.parse(postId));
 }
 
 // --- Games -----------------------------------------------------------------

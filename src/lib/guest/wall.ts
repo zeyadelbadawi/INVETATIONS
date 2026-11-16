@@ -4,7 +4,13 @@ import type { PublicEvent } from "@/lib/events/published";
 import type { GuestContext } from "@/lib/guest/session";
 import { signedMediaUrls } from "@/lib/media/process";
 
-export const WALL_LIMITS = { photosPerPlayer: 10, voicePerPlayer: 3, mediaPerEvent: 600, uploadBytes: 2_000_000 } as const;
+// Caps count uploaded and processed files; unfinished slots are limited per
+// player and swept after an hour (review F4).
+export const WALL_LIMITS = { photosPerPlayer: 10, voicePerPlayer: 3, mediaPerEvent: 600, pendingPerPlayer: 3, uploadBytes: 2_000_000 } as const;
+
+export function playerCap(purpose: "wall_photo" | "wall_voice" | string): number {
+  return purpose === "wall_voice" ? WALL_LIMITS.voicePerPlayer : WALL_LIMITS.photosPerPlayer;
+}
 const REPORTS_TO_HIDE = 3;
 
 export type WallItem = {
@@ -75,14 +81,22 @@ export function initialPostStatus(guest: GuestContext, kind: "text" | "voice" | 
   return guest.invitation.kind !== "open" && guest.player?.approved ? "visible" : "pending";
 }
 
-export async function reportPost(event: PublicEvent, postId: string): Promise<void> {
-  const db = adminDb();
-  const { data: post } = await db.from("wall_posts").select("id, reported_count, status").eq("event_id", event.id).eq("id", postId).maybeSingle();
-  if (!post) return;
-  const count = post.reported_count + 1;
-  await db
-    .from("wall_posts")
-    .update({ reported_count: count, status: count >= REPORTS_TO_HIDE && post.status === "visible" ? "pending" : post.status })
-    .eq("id", post.id)
-    .eq("event_id", event.id);
+// Reports count only from approved players who came through a personal or
+// group link (review F8): walk-ins waiting for approval can still press the
+// button, but it changes nothing. The count and the hide-at-three rule are
+// applied in one statement, which re-checks the reporter in the database.
+export function reportCounts(guest: GuestContext): boolean {
+  return Boolean(guest.player?.approved) && guest.invitation.kind !== "open";
+}
+
+export async function reportPost(event: PublicEvent, guest: GuestContext, postId: string): Promise<boolean> {
+  if (!guest.player || !reportCounts(guest)) return false;
+  const { data, error } = await adminDb().rpc("wall_report", {
+    p_event_id: event.id,
+    p_post_id: postId,
+    p_player_id: guest.player.id,
+    p_threshold: REPORTS_TO_HIDE,
+  });
+  if (error) throw new Error(`report failed: ${error.message}`);
+  return data === true;
 }

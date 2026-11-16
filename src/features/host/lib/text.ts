@@ -44,3 +44,18 @@ export function fmt(template: string, values: Record<string, string | number>): 
 export function newItemId(): string {
   return Math.random().toString(36).slice(2, 10).padEnd(8, "0");
 }
+
+// Addresses under the reserved `.invalid` top-level domain cannot receive mail
+// and are what server-made holding accounts use (review F1); public sign-up
+// never accepts them. Production also requires email confirmation.
+export function reservedEmail(email: string): boolean {
+  return /\.invalid\.?$/i.test(email.trim());
+}
+
+// New event passcodes (security rule 38, review F3): at least 6 characters and
+// not only digits, so a short number cannot be guessed past the throttles.
+// Passcodes set before this rule keep working; only new ones are checked.
+export const PASSCODE_MIN_CHARS = 6;
+export function weakPasscode(value: string): boolean {
+  return Array.from(value.trim()).length < PASSCODE_MIN_CHARS || /^\p{Nd}+$/u.test(value.trim());
+}

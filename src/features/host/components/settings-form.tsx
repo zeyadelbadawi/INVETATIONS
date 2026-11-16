@@ -8,6 +8,7 @@ import { Checkbox, Input, Select } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import { updateSettingsAction } from "../actions/events";
 import type { ActionResult } from "../lib/errors";
+import { weakPasscode } from "../lib/text";
 import { TIMEZONES } from "../lib/time";
 import { errorText, hostMessages } from "../messages";
 
@@ -42,7 +43,7 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
     setResult(null);
   };
   const endsBeforeStart = values.startsAt !== "" && values.endsAt !== "" && values.endsAt < values.startsAt;
-  const passcodeShort = passcodeMode === "set" && passcode.length < 6;
+  const passcodeShort = passcodeMode === "set" && weakPasscode(passcode);
   const hints: Partial<Record<(typeof TOGGLES)[number], string>> = {
     rosterVisible: s.rosterVisibleHint,
     openLinkApproval: s.openLinkApprovalHint,

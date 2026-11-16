@@ -1,6 +1,7 @@
 // The shape of an event's content: template field values plus an ordered list of
 // blocks. Parsed with these schemas on every read and write (security C1) —
 // content is data, never markup.
+import "@/lib/zod-jitless";
 import { z } from "zod";
 
 const text = (max: number) => z.string().trim().max(max);

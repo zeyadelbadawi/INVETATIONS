@@ -53,7 +53,9 @@ export function QuizCard({ game, data, locale, t, disabled }: CardProps<QuizView
   const [current, setCurrent] = useState<{ question: QuizQuestionView; deadline: number | null } | null>(null);
   const [done, setDone] = useState(game.answered.length);
   const [finished, setFinished] = useState(view.state !== "open" || game.answered.length >= total);
-  const [earned, setEarned] = useState(game.myPoints);
+  // Points are known only once the quiz has closed (the server keeps them back
+  // while it is open, so they cannot reveal which answers were right).
+  const earned = view.state !== "open" ? game.myPoints : null;
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState<number | null>(null);
   const name = useId();
@@ -87,8 +89,7 @@ export function QuizCard({ game, data, locale, t, disabled }: CardProps<QuizView
   const answer = async (optionId: string) => {
     if (!current) return;
     setBusy(true);
-    const result = await data.answer(game.id, current.question.id, { optionId });
-    if (result.ok) setEarned((n) => n + result.points);
+    await data.answer(game.id, current.question.id, { optionId });
     setDone((n) => n + 1);
     await next();
   };
@@ -111,7 +112,7 @@ export function QuizCard({ game, data, locale, t, disabled }: CardProps<QuizView
         </div>
       ) : finished ? (
         <p className="inv-text" role="status">
-          <strong>{t.games.done}</strong> {t.games.earned(earned)}
+          <strong>{t.games.done}</strong> {earned !== null ? t.games.earned(earned) : t.games.pointsAfterClose}
         </p>
       ) : (
         <button type="button" className="inv-btn inv-btn--solid" onClick={next} disabled={busy || disabled}>

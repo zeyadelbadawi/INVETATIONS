@@ -18,7 +18,10 @@ const remote = [hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL), hostOf(process.env
 
 // A nonce-based policy would force every page to render per request, which the
 // cached invitation shell cannot afford. Inline scripts are therefore allowed
-// (recorded exception, security rule 17); no third-party script host is.
+// here (recorded exception, security rule 17); no third-party script host is.
+// The dashboard, back office and link pages render per request anyway and get
+// a strict nonce policy from src/proxy.ts (src/lib/security/csp.ts) instead, so
+// this one must not be sent for them: see STATIC_CSP_SOURCE.
 function csp(frameAncestors: "'none'" | "'self'"): string {
   return [
     "default-src 'self'",
@@ -44,6 +47,19 @@ const baseHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// Every path except /preview, and except the pages whose policy comes from the
+// proxy: /[lang]/app/**, /[lang]/admin/**, /l/**, /k.
+const STATIC_CSP_SOURCE = "/((?!preview$|l$|l/|k$|k/$|(?:ar|en)/(?:app|admin)$|(?:ar|en)/(?:app|admin)/).*)";
+
+// Personal guest API responses (security rule 4). Listed after the catch-all,
+// which sets a different Referrer-Policy: for a header set in more than one
+// matching entry the last one wins, and config headers replace the ones a
+// route handler sets itself (review F10).
+const privateApiHeaders = [
+  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "Cache-Control", value: "private, no-store" },
+];
+
 const guestHeaders = [
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
@@ -66,12 +82,9 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/((?!preview$).*)",
-        headers: [
-          ...baseHeaders,
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Content-Security-Policy", value: csp("'none'") },
-        ],
+        headers: [...baseHeaders, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }],
       },
+      { source: STATIC_CSP_SOURCE, headers: [{ key: "Content-Security-Policy", value: csp("'none'") }] },
       {
         source: "/preview",
         headers: [...baseHeaders, ...guestHeaders, { key: "Content-Security-Policy", value: csp("'self'") }],
@@ -84,6 +97,8 @@ const nextConfig: NextConfig = {
       { source: "/media/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
       { source: "/l/:path*", headers: [...guestHeaders, { key: "Cache-Control", value: "private, no-store" }] },
       { source: "/k", headers: [...guestHeaders, { key: "Cache-Control", value: "private, no-store" }] },
+      { source: "/api/guest/:path*", headers: privateApiHeaders },
+      { source: "/api/keeper", headers: privateApiHeaders },
     ];
   },
 };

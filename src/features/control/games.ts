@@ -2,10 +2,12 @@ import "server-only";
 import { adminDb } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/lib/events/access";
+import { hidesScoreWhileOpen } from "@/lib/guest/games";
 import { refreshScores } from "@/lib/guest/scores";
 import { openGame, parseGame } from "@/play/registry";
-import { gameRef, settleReason } from "@/play/scoring";
+import { gameRef, settleReason, submitReason } from "@/play/scoring";
 import { starterGames, type Occasion } from "@/play/banks";
+import type { GameKind } from "@/play/types";
 
 // Host-side game management. Callers authorise first and pass the actor.
 
@@ -76,6 +78,34 @@ export async function setTruth(eventId: string, gameId: string, rawTruth: unknow
   return { ok: true };
 }
 
+// Quiz points are scored when the answer arrives but kept off the ledger while
+// the quiz is open (review F6). Closing or settling adds them, once per player
+// and question; approved, present players only.
+async function awardHeldScores(eventId: string, gameId: string, kind: GameKind): Promise<number> {
+  if (!hidesScoreWhileOpen(kind)) return 0;
+  const db = adminDb();
+  const { data: answers } = await db
+    .from("game_answers")
+    .select("player_id, question_id, score")
+    .eq("event_id", eventId)
+    .eq("game_id", gameId)
+    .gt("score", 0);
+  if (!answers || answers.length === 0) return 0;
+  const playerIds = [...new Set(answers.map((a) => a.player_id))];
+  const { data: players } = await db.from("players").select("id, team_id, approved, removed_at").eq("event_id", eventId).in("id", playerIds);
+  const playerById = new Map((players ?? []).map((p) => [p.id, p]));
+  const rows = answers.flatMap((a) => {
+    const player = playerById.get(a.player_id);
+    if (!player || !player.approved || player.removed_at) return [];
+    return [{ event_id: eventId, player_id: a.player_id, team_id: player.team_id, points: a.score, reason: submitReason(kind), ref: gameRef(gameId, a.question_id) }];
+  });
+  if (rows.length === 0) return 0;
+  const { error } = await db.from("score_events").upsert(rows, { onConflict: "player_id,reason,ref", ignoreDuplicates: true });
+  if (error) throw new Error(`quiz points failed: ${error.message}`);
+  await refreshScores(eventId);
+  return rows.length;
+}
+
 export async function setGameState(eventId: string, actor: Actor, gameId: string, state: "hidden" | "open" | "closed"): Promise<Result> {
   const game = await load(eventId, gameId);
   if (!game) return { ok: false, issues: ["game not found"] };
@@ -87,6 +117,7 @@ export async function setGameState(eventId: string, actor: Actor, gameId: string
   }
   const { error } = await db.from("games").update({ state }).eq("event_id", eventId).eq("id", gameId);
   if (error) throw new Error(`game state failed: ${error.message}`);
+  if (state === "closed") await awardHeldScores(eventId, gameId, game.bound.kind);
   await audit({ actorId: actor.userId, actorKind: actorKind(actor), action: `game.${state}`, eventId, target: gameId, grantId: actor.grantId });
   return { ok: true };
 }
@@ -112,6 +143,7 @@ export async function settleGame(eventId: string, actor: Actor, gameId: string):
   }
   const settled = game.bound.settle(secret?.truth ?? { answers: {} }, derived);
   if (!settled.ok) return settled;
+  await awardHeldScores(eventId, gameId, game.bound.kind);
 
   const { data: answers } = await db
     .from("game_answers")

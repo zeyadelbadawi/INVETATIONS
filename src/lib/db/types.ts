@@ -209,6 +209,20 @@ isOneToOne: false
       referencedColumns: ["event_id","id"]
     }
                   ]
+                },"holding_accounts": {
+                  Row: {
+                    "created_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"invitations": {
                   Row: {
                     "code_hash": string,"created_at": string,"event_id": string,"id": string,"kind": string,"label": string,"locale": string | null,"max_players": number,"opened_at": string | null,"pax_cap": number,"phone": string | null,"revoked_at": string | null,"side_team_id": string | null
@@ -665,6 +679,9 @@ isOneToOne: false
 "db_now":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"invitations_add":
+{ Args: { "p_event_id": string,"p_max_guests": number,"p_rows": Json }; Returns: Json
+                           },
 "jobs_claim":
 { Args: { "p_limit": number,"p_visibility_seconds": number }; Returns: {
               "attempts": number,
@@ -684,8 +701,22 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"join_player":
+{ Args: { "p_approved": boolean,"p_event_id": string,"p_invitation_id": string,"p_name": string,"p_team_id": string }; Returns: {
+              "approved": boolean,"id": string,"name": string,"team_id": string,"team_switched_at": string
+            }[]
+                           },
+"media_complete":
+{ Args: { "p_event_cap": number,"p_event_id": string,"p_media_id": string,"p_photo_cap": number,"p_player_id": string,"p_voice_cap": number }; Returns: string
+                           },
+"media_reserve":
+{ Args: { "p_event_cap": number,"p_event_id": string,"p_id": string,"p_path": string,"p_pending_cap": number,"p_player_cap": number,"p_player_id": string,"p_purpose": string }; Returns: string
+                           },
 "rate_limit_hit":
 { Args: { "p_key": string,"p_max": number,"p_window_seconds": number }; Returns: boolean
+                           },
+"rate_limit_refund":
+{ Args: { "p_key": string,"p_window_seconds": number }; Returns: undefined
                            },
 "recap_top_players":
 { Args: { "p_event_id": string,"p_per_team": number }; Returns: {
@@ -695,12 +726,23 @@ isOneToOne: false
 "recompute_team_scores":
 { Args: { "p_event_id": string }; Returns: undefined
                            },
+"rejoin_reserve":
+{ Args: { "p_lock_seconds": number,"p_max": number,"p_player_id": string }; Returns: string
+                           },
+"rejoin_success":
+{ Args: { "p_player_id": string }; Returns: undefined
+                           },
 "reveal_cancel":
 { Args: { "p_event_id": string }; Returns: boolean
                            },
 "reveal_release":
 { Args: { "p_event_id": string }; Returns: {
               "ciphertext": string,"id": string,"key_version": number,"nonce": string
+            }[]
+                           },
+"reveal_seal":
+{ Args: { "p_ciphertext": string,"p_device_hash": string,"p_key_version": number,"p_nonce": string,"p_reveal_id": string }; Returns: {
+              "out_seal_count": number,"out_state": string
             }[]
                            },
 "reveal_start":
@@ -729,6 +771,9 @@ isOneToOne: false
 { Args: { "p_order_id": string,"p_status": string }; Returns: {
               "event_id": string,"plan_id": string,"slug": string
             }[]
+                           },
+"wall_report":
+{ Args: { "p_event_id": string,"p_player_id": string,"p_post_id": string,"p_threshold": number }; Returns: boolean
                            }
           }
           Enums: {

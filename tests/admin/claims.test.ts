@@ -5,11 +5,11 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { createHash } from "node:crypto";
-import { admin, makeEvent, makeHost } from "../db/helpers";
+import { createHash, randomBytes } from "node:crypto";
+import { admin, anonymous, makeEvent, makeHost } from "../db/helpers";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { acceptClaim, claimTokenHash, createClaim, previewClaim } from "@/features/admin/lib/claims";
-import { createEventOnBehalf, holdingEmail, isHoldingEmail } from "@/features/admin/lib/events";
+import { createEventOnBehalf, isHoldingAccount } from "@/features/admin/lib/events";
 import { auditRows, makeStaff, outcome } from "./helpers";
 
 const db = admin as unknown as AdminClient;
@@ -43,14 +43,70 @@ describe("events made on a customer's behalf", () => {
     const b = await heldEvent("someone-else@example.test");
     const holding = await ownerOf(a.id);
     // Same holding account unless that one just reached the per-account event cap.
-    const { data: other } = await admin.auth.admin.getUserById(await ownerOf(b.id));
-    expect(isHoldingEmail(other.user!.email)).toBe(true);
+    for (const owner of [holding, await ownerOf(b.id)]) {
+      expect(await isHoldingAccount(db, owner)).toBe(true);
+      const { data: recorded } = await admin.from("holding_accounts").select("user_id").eq("user_id", owner);
+      expect(recorded).toHaveLength(1);
+    }
     const { data } = await admin.auth.admin.getUserById(holding);
-    expect(isHoldingEmail(data.user!.email)).toBe(true);
-    expect(data.user!.email).toMatch(/^holding-\d+@no-reply\.invalid$/);
-    expect(holdingEmail(1)).toBe("holding-1@no-reply.invalid");
+    expect(data.user!.email).toMatch(/^holding-[0-9a-f]+@no-reply\.invalid$/);
+    expect(data.user!.app_metadata.holding).toBe(true);
     expect(new Date(data.user!.banned_until!).getTime()).toBeGreaterThan(Date.now() + 50 * 365 * 86_400_000);
     expect(await auditRows("event.created_on_behalf", { eventId: a.id })).toHaveLength(1);
+  });
+
+  // Review F1: anyone can sign up with an address that looks like a holding
+  // account. Such an account must never be handed customers' events.
+  it("never uses an account that merely has a holding-style email", async () => {
+    const squatEmails = Array.from({ length: 3 }, (_, i) => `holding-${i + 1}${randomBytes(4).toString("hex")}@no-reply.invalid`);
+    const squatters: string[] = [];
+    for (const email of squatEmails) {
+      // Public sign-up straight against the auth server (not through our action).
+      const { error } = await anonymous().auth.signUp({ email, password: "Squatter-pass-123" });
+      expect(error).toBeNull();
+      const { data: found } = await admin.rpc("staff_user_id_by_email", { p_email: email });
+      if (typeof found === "string") squatters.push(found);
+    }
+    expect(squatters.length).toBeGreaterThan(0);
+    for (const id of squatters) expect(await isHoldingAccount(db, id)).toBe(false);
+
+    const made = await heldEvent("victim@example.test");
+    const owner = await ownerOf(made.id);
+    expect(squatters).not.toContain(owner);
+    expect(await isHoldingAccount(db, owner)).toBe(true);
+
+    // Even recorded by mistake, an account the auth server does not report as a
+    // banned server-made holding account is refused.
+    const squatter = squatters[0];
+    await admin.from("holding_accounts").insert({ user_id: squatter });
+    expect(await isHoldingAccount(db, squatter)).toBe(false);
+    const squatEvent = await makeEvent(squatter);
+    expect(await outcome(createClaim(db, boss.id, squatEvent.id, "x@example.test"))).toBe("forbidden");
+    await admin.from("holding_accounts").delete().eq("user_id", squatter);
+
+    // A recorded holding account that has been unbanned is refused too.
+    await admin.auth.admin.updateUserById(owner, { ban_duration: "none" });
+    try {
+      expect(await isHoldingAccount(db, owner)).toBe(false);
+      expect(await outcome(createClaim(db, boss.id, made.id, "victim@example.test"))).toBe("forbidden");
+    } finally {
+      await admin.auth.admin.updateUserById(owner, { ban_duration: "876000h" });
+    }
+    await admin.from("events").delete().eq("id", squatEvent.id);
+    for (const id of squatters) await admin.auth.admin.deleteUser(id);
+  });
+
+  it("the claim transfer itself refuses an event whose owner is not a recorded holding account", async () => {
+    const who = await customer("claim-db-guard");
+    const event = await heldEvent(who.email);
+    const { token } = await createClaim(db, boss.id, event.id, who.email);
+    const real = await makeHost("claim-db-guard-owner");
+    // The event moved to a real customer after the link was made.
+    await admin.from("events").update({ owner_id: real.id }).eq("id", event.id);
+    const { data } = await admin.rpc("claim_event", { p_token_hash: claimTokenHash(token), p_user_id: who.userId, p_email_lower: who.email.toLowerCase() });
+    expect(data).toEqual([]);
+    expect(await outcome(acceptClaim(db, who, token))).toBe("claim_unavailable");
+    expect(await ownerOf(event.id)).toBe(real.id);
   });
 
   it("only admins create them", async () => {

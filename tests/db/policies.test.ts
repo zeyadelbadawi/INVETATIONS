@@ -7,12 +7,15 @@ const ALL_TABLES = [
   "profiles", "staff_roles", "plans", "events", "slug_tombstones", "event_members", "staff_grants",
   "teams", "invitations", "players", "player_secrets", "guest_sessions", "rsvps", "games",
   "game_secrets", "game_answers", "game_serves", "score_events", "team_scores", "media", "wall_posts",
-  "live_state", "reveals", "orders", "payments", "jobs", "rate_limits", "audit_log",
+  "live_state", "reveals", "orders", "payments", "jobs", "rate_limits", "audit_log", "event_claims",
+  "holding_accounts",
 ];
 const SERVER_ONLY = [
   "staff_roles", "staff_grants", "slug_tombstones", "player_secrets", "guest_sessions", "game_secrets",
-  "game_serves", "reveals", "orders", "payments", "jobs", "rate_limits", "audit_log",
+  "game_serves", "reveals", "orders", "payments", "jobs", "rate_limits", "audit_log", "event_claims",
+  "holding_accounts",
 ];
+const NIL = "00000000-0000-0000-0000-000000000000";
 const RPCS: [string, Record<string, unknown>][] = [
   ["rate_limit_hit", { p_key: "x", p_window_seconds: 60, p_max: 1 }],
   ["jobs_claim", { p_limit: 1, p_visibility_seconds: 60 }],
@@ -22,6 +25,17 @@ const RPCS: [string, Record<string, unknown>][] = [
     p_order_id: "00000000-0000-0000-0000-000000000000", p_provider: "manual", p_provider_ref: "x",
     p_amount_egp: 0, p_approved_by: null, p_receipt_media_id: null,
   }],
+  // 2026-11-16 hardening migration.
+  ["rate_limit_refund", { p_key: "x", p_window_seconds: 60 }],
+  ["rejoin_reserve", { p_player_id: NIL, p_max: 5, p_lock_seconds: 900 }],
+  ["rejoin_success", { p_player_id: NIL }],
+  ["join_player", { p_event_id: NIL, p_invitation_id: NIL, p_name: "x", p_team_id: null, p_approved: true }],
+  ["invitations_add", { p_event_id: NIL, p_max_guests: 1, p_rows: [] }],
+  ["media_reserve", { p_id: NIL, p_event_id: NIL, p_player_id: NIL, p_purpose: "wall_photo", p_path: "x", p_player_cap: 1, p_event_cap: 1, p_pending_cap: 1 }],
+  ["media_complete", { p_media_id: NIL, p_event_id: NIL, p_player_id: NIL, p_photo_cap: 1, p_voice_cap: 1, p_event_cap: 1 }],
+  ["reveal_seal", { p_reveal_id: NIL, p_device_hash: "\\x00", p_ciphertext: "\\x00", p_nonce: "\\x00", p_key_version: 1 }],
+  ["wall_report", { p_event_id: NIL, p_post_id: NIL, p_player_id: NIL, p_threshold: 3 }],
+  ["claim_event", { p_token_hash: "\\x00", p_user_id: NIL, p_email_lower: "a@b.c" }],
 ];
 
 let a: Awaited<ReturnType<typeof makeHost>>;
@@ -93,6 +107,24 @@ describe("host isolation", () => {
       const { error } = await a.client.rpc(fn, args);
       expect(error, `${fn} callable by host`).not.toBeNull();
     }
+  });
+
+  it("the event passcode hash is not selectable, the other columns are", async () => {
+    await admin.from("events").update({ passcode_hash: "scrypt$sentinel" }).eq("id", eventA.id);
+    const hidden = await a.client.from("events").select("passcode_hash").eq("id", eventA.id);
+    expect(hidden.error).not.toBeNull();
+    const star = await a.client.from("events").select("*").eq("id", eventA.id);
+    expect(JSON.stringify(star)).not.toContain("sentinel");
+    const visible = await a.client
+      .from("events")
+      .select("id, owner_id, kind, slug, status, template_id, template_version, content, published_content, published_version, theme, settings, default_locale, starts_at, ends_at, timezone, plan_id, created_at, updated_at")
+      .eq("id", eventA.id);
+    expect(visible.error).toBeNull();
+    expect(visible.data).toHaveLength(1);
+    // Draft edits still work and can return the row.
+    const edit = await a.client.from("events").update({ theme: {} }).eq("id", eventA.id).select("id, theme");
+    expect(edit.error).toBeNull();
+    expect(edit.data).toHaveLength(1);
   });
 
   it("invitation code hashes are not selectable", async () => {

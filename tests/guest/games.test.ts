@@ -4,6 +4,7 @@ import { admin } from "../db/helpers";
 import { makeGuest, makeLiveEvent } from "./fixtures";
 import { joinAsNewPlayer } from "@/lib/guest/join";
 import { listGames, serveQuestion, submitAnswer } from "@/lib/guest/games";
+import { readLive } from "@/lib/live";
 import { saveGame, setGameState, setTruth, settleGame } from "@/features/control/games";
 import { predictionConfigSchema } from "@/play/modules/prediction";
 import { quizInput, thisOrThatConfig, thisOrThatTruth } from "@/play/fixtures";
@@ -84,9 +85,56 @@ describe("quiz", () => {
 
     const { data: answers } = await admin.from("game_answers").select("id").eq("game_id", saved.id).eq("player_id", guest.player.id);
     expect(answers).toHaveLength(1);
+    // Quiz points reach the ledger when the quiz closes (review F6), once.
+    expect((await admin.from("score_events").select("points").eq("player_id", guest.player.id).eq("reason", "quiz")).data).toHaveLength(0);
+    await setGameState(event.id, actor, saved.id, "closed");
+    await setGameState(event.id, actor, saved.id, "open");
+    await setGameState(event.id, actor, saved.id, "closed");
     const { data: ledger } = await admin.from("score_events").select("points").eq("player_id", guest.player.id).eq("reason", "quiz");
     expect(ledger).toHaveLength(1);
     expect(ledger![0].points).toBeGreaterThan(0);
+  });
+
+  // Review F6: while a quiz is open, nothing a guest can see changes with
+  // whether an answer was right: not the answer response, the games list, the
+  // public live payload (team totals) or the player's details.
+  it("gives no correctness signal anywhere while open, and the points after it closes", async () => {
+    const { event, actor, join } = await setup();
+    const saved = await saveGame(event.id, actor, { kind: "quiz", config: quiz(false) });
+    if (!saved.ok) throw new Error("save failed");
+    await setTruth(event.id, saved.id, quizTruth);
+    await setGameState(event.id, actor, saved.id, "open");
+    const right = await join("Rana", "bride");
+    const wrong = await join("Wael", "bride");
+
+    const outputs = async () => {
+      const [r, w, live] = await Promise.all([listGames(event, right), listGames(event, wrong), readLive(event)]);
+      return { right: r.find((g) => g.id === saved.id)!, wrong: w.find((g) => g.id === saved.id)!, live };
+    };
+    const before = await outputs();
+    const rightAnswer = await submitAnswer(event, right.player, saved.id, "q2", { optionId: "c" });
+    const wrongAnswer = await submitAnswer(event, wrong.player, saved.id, "q2", { optionId: "a" });
+    // Identical responses, with no points in them.
+    expect(rightAnswer).toEqual({ ok: true });
+    expect(wrongAnswer).toEqual(rightAnswer);
+
+    const after = await outputs();
+    expect(after.right.myPoints).toBeNull();
+    expect(after.wrong.myPoints).toBeNull();
+    // The two players' views differ only in which options they were shown (seeded per player).
+    const strip = (g: typeof after.right) => ({ ...g, view: null });
+    expect(strip(after.right)).toEqual(strip(after.wrong));
+    expect(after.right.answered).toEqual(["q2"]);
+    // Team totals in the public live payload have not moved.
+    expect(after.live.scores).toEqual(before.live.scores);
+    const { data: ledger } = await admin.from("score_events").select("id").in("player_id", [right.player.id, wrong.player.id]).eq("reason", "quiz");
+    expect(ledger).toHaveLength(0);
+
+    await setGameState(event.id, actor, saved.id, "closed");
+    const closed = await outputs();
+    expect(closed.right.myPoints).toBeGreaterThan(0);
+    expect(closed.wrong.myPoints).toBe(0);
+    expect(closed.live.scores).not.toEqual(before.live.scores);
   });
 
   it("rejects unknown options, closed games and edits after answers exist", async () => {

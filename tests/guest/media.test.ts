@@ -5,7 +5,21 @@ import { admin } from "../db/helpers";
 import { makeGuest, makeLiveEvent } from "./fixtures";
 import { joinAsNewPlayer } from "@/lib/guest/join";
 import { processMedia } from "@/lib/media/process";
-import { sniff } from "@/lib/media/sniff";
+import { isAudioOnly, mp4TrackKinds, sniff, webmTrackKinds } from "@/lib/media/sniff";
+import { readFileSync } from "node:fs";
+
+const fixture = (name: string) => readFileSync(new URL(`../fixtures/media/${name}`, import.meta.url));
+
+// Rewrites the Segment's size to "unknown" (all ones), as MediaRecorder writes it.
+function unknownSizeSegment(webm: Buffer): Buffer {
+  const out = Buffer.from(webm);
+  const at = out.indexOf(Buffer.from([0x18, 0x53, 0x80, 0x67]));
+  const first = out[at + 4];
+  const length = Math.clz32(first) - 23;
+  out[at + 4] = (0xff >> (length - 1)) & 0xff | (1 << (8 - length));
+  for (let i = 1; i < length; i++) out[at + 4 + i] = 0xff;
+  return out;
+}
 import { readWall } from "@/lib/guest/wall";
 
 async function setup() {
@@ -98,6 +112,37 @@ describe("processing", () => {
 
     const big = await upload(event.id, guest.player.id, "wall_photo", Buffer.alloc(3_000_000, 1), "image/jpeg");
     expect(big.uploadError).not.toBeNull();
+  });
+
+  // Review F11: a voice note must be audio only. Fixtures in tests/fixtures/media
+  // were made with ffmpeg (0.5 s sine; 16x16 video where there is one).
+  it("accepts audio-only voice notes and rejects MP4 or WebM files with a video track", async () => {
+    const { event, guest } = await setup();
+    const cases: [string, string, "processed" | "rejected"][] = [
+      ["voice.m4a", "audio/mp4", "processed"],
+      ["voice.webm", "audio/webm", "processed"],
+      ["clip.mp4", "audio/mp4", "rejected"],
+      ["video-only-m4a.mp4", "audio/mp4", "rejected"],
+      ["clip.webm", "audio/webm", "rejected"],
+    ];
+    for (const [file, type, expected] of cases) {
+      const m = await upload(event.id, guest.player.id, "wall_voice", fixture(file), type);
+      expect(m.uploadError, file).toBeNull();
+      expect(await processMedia(m.id), file).toBe(expected);
+    }
+  });
+
+  it("reads track types from MP4 handlers and WebM tracks, refusing what it cannot read", () => {
+    expect(mp4TrackKinds(fixture("voice.m4a"))).toEqual(["soun"]);
+    expect(mp4TrackKinds(fixture("clip.mp4"))?.sort()).toEqual(["soun", "vide"]);
+    expect(webmTrackKinds(fixture("voice.webm"))).toEqual(["soun"]);
+    expect(webmTrackKinds(fixture("clip.webm"))?.sort()).toEqual(["soun", "vide"]);
+    // Browsers record WebM with an unknown-size Segment; it must still parse.
+    expect(isAudioOnly(unknownSizeSegment(fixture("voice.webm")), "audio/webm")).toBe(true);
+    expect(isAudioOnly(unknownSizeSegment(fixture("clip.webm")), "audio/webm")).toBe(false);
+    // Just the magic bytes, or a truncated file, is not enough.
+    expect(isAudioOnly(Buffer.from([0x1a, 0x45, 0xdf, 0xa3, ...new Array(64).fill(1)]), "audio/webm")).toBe(false);
+    expect(isAudioOnly(fixture("voice.m4a").subarray(0, 40), "audio/mp4")).toBe(false);
   });
 
   it("processing is a no-op the second time", async () => {

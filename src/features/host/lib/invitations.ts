@@ -67,31 +67,28 @@ export async function addInvitations(
     return { ...row, label, phone, code: newLinkCode() };
   });
 
-  if (entitlements.max_guests !== null) {
-    const used = await seatsUsed(db, event.id);
-    const asked = rows.reduce((sum, row) => sum + row.size, 0);
-    if (used + asked > entitlements.max_guests) {
-      throw new HostError("guest_cap", { max: entitlements.max_guests, used });
-    }
-  }
-
-  const { data, error } = await db
-    .from("invitations")
-    .insert(
-      rows.map((row) => ({
-        event_id: event.id,
-        kind: row.kind,
-        label: row.label,
-        pax_cap: row.kind === "personal" ? row.size : 1,
-        max_players: row.kind === "group" ? row.size : Math.max(row.size, 1),
-        phone: row.phone,
-        side_team_id: row.sideTeamId ?? null,
-        locale: row.locale ?? null,
-        code_hash: hashForDb(row.code),
-      })),
-    )
-    .select("id");
-  if (error || !data || data.length !== rows.length) throw new Error(`invitation insert failed: ${error?.message}`);
+  // One database call locks the event, sums the seats already promised and
+  // inserts only if the plan's cap still holds, so two requests in parallel
+  // cannot both fit under it (review F9).
+  const { data: result, error } = await db.rpc("invitations_add", {
+    p_event_id: event.id,
+    p_max_guests: entitlements.max_guests as number,
+    p_rows: rows.map((row) => ({
+      kind: row.kind,
+      label: row.label,
+      pax_cap: row.kind === "personal" ? row.size : 1,
+      max_players: row.kind === "group" ? row.size : Math.max(row.size, 1),
+      phone: row.phone,
+      side_team_id: row.sideTeamId ?? null,
+      locale: row.locale ?? null,
+      code_hash: hashForDb(row.code).slice(2),
+    })),
+  });
+  if (error) throw new Error(`invitation insert failed: ${error.message}`);
+  const outcome = result as { ok: boolean; used?: number; ids?: string[] } | null;
+  if (outcome && !outcome.ok) throw new HostError("guest_cap", { max: entitlements.max_guests ?? 0, used: outcome.used ?? 0 });
+  const data = (outcome?.ids ?? []).map((id) => ({ id }));
+  if (data.length !== rows.length) throw new Error("invitation insert failed: row count");
 
   await audit({
     ...auditActor(actor),

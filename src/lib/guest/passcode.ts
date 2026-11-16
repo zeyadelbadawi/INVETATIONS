@@ -13,15 +13,23 @@ import { verifyPasscode } from "@/features/host/lib/passcode";
 export const PASSCODE_GRANT_DAYS = 30;
 const GRANT_MS = PASSCODE_GRANT_DAYS * 24 * 3600 * 1000;
 
-// Wrong guesses per event per window; correct ones are not counted, so a whole
-// hall entering the right passcode is never locked out.
-export const PASSCODE_FAILURES = { windowSeconds: 600, max: 20 } as const;
-// Every attempt per event and per address. High ceilings: they bound bursts
-// that race past the failure check, and a wedding hall shares one address.
-export const PASSCODE_ATTEMPTS_PER_EVENT = { windowSeconds: 600, max: 300 } as const;
+// Throttles (rule 38, review F3). A slot is reserved BEFORE the slow check, so
+// a burst of parallel guesses cannot race past it, and handed back when the
+// passcode was right: only failures stay counted.
+//   - per address and event: a modest allowance of wrong guesses. A wedding
+//     hall shares one address, but its guests type the right passcode, which
+//     costs nothing.
+//   - per event: a high ceiling on wrong guesses from everywhere. It never
+//     blocks a correct passcode; once spent, wrong guesses are answered
+//     "locked" and only a guest who knows the passcode gets through.
+//   - per address: every attempt on any event, a high ceiling that bounds the
+//     hashing work one address can cause.
+export const PASSCODE_FAILURES_PER_IP = { windowSeconds: 600, max: 10 } as const;
+export const PASSCODE_FAILURES = { windowSeconds: 600, max: 200 } as const;
 export const PASSCODE_ATTEMPTS_PER_IP = { windowSeconds: 600, max: 300 } as const;
 
 export const failureKey = (eventId: string) => `pc:fail:${eventId}`;
+export const ipFailureKey = (eventId: string, ip: string) => `pc:fail:${eventId}:${sha256(ip).toString("hex").slice(0, 24)}`;
 
 // __Host- cookies need Secure and Path=/ and no Domain; browsers treat
 // localhost as secure, so the same name works in development.
@@ -61,19 +69,6 @@ export async function readPasscodeHash(eventId: string): Promise<string | null> 
 // Slow, salted, constant-time comparison against the stored hash.
 export async function checkPasscode(passcodeHash: string | null, passcode: string): Promise<boolean> {
   return verifyPasscode(passcode, passcodeHash);
-}
-
-// How many wrong guesses this event has had in the current window. Read
-// without counting, so correct attempts never use up the allowance.
-export async function recentFailures(eventId: string): Promise<number> {
-  const since = new Date(Date.now() - PASSCODE_FAILURES.windowSeconds * 1000).toISOString();
-  const { data, error } = await adminDb()
-    .from("rate_limits")
-    .select("count, window_start")
-    .eq("key", failureKey(eventId))
-    .gte("window_start", since);
-  if (error) throw new Error(`rate limiter unavailable: ${error.message}`);
-  return (data ?? []).reduce((sum, row) => Math.max(sum, row.count), 0);
 }
 
 export async function setPasscodeCookie(eventId: string, passcodeHash: string): Promise<void> {

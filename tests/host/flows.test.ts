@@ -244,6 +244,19 @@ describe("settings", () => {
     expect(await code(updateSettings(db, owner(a.id), event.id, { ...base, endsAt: "2026-12-01T10:00", passcode: { mode: "keep" } }))).toBe("invalid");
     expect(await code(updateSettings(db, owner(b.id), event.id, { ...base, passcode: { mode: "clear" } }))).toBe("forbidden");
 
+    // Review F3: new passcodes must not be only digits (Latin or Arabic-Indic).
+    for (const weak of ["123456", "20261231", "١٢٣٤٥٦٧", "  12345  "]) {
+      expect(await code(updateSettings(db, owner(a.id), event.id, { ...base, passcode: { mode: "set", value: weak } }))).toBe("invalid");
+    }
+    expect((await admin.from("events").select("passcode_hash").eq("id", event.id).single()).data!.passcode_hash).toBe(data!.passcode_hash);
+    await updateSettings(db, owner(a.id), event.id, { ...base, passcode: { mode: "set", value: "2026-farah" } });
+    // A numeric passcode set before the rule keeps working.
+    const { hashPasscode } = await import("@/features/host/lib/passcode");
+    const legacy = await hashPasscode("123456");
+    await admin.from("events").update({ passcode_hash: legacy }).eq("id", event.id);
+    await updateSettings(db, owner(a.id), event.id, { ...base, passcode: { mode: "keep" } });
+    expect(await verifyPasscode("123456", (await admin.from("events").select("passcode_hash").eq("id", event.id).single()).data!.passcode_hash)).toBe(true);
+
     await updateSettings(db, owner(a.id), event.id, { ...base, passcode: { mode: "clear" } });
     expect((await admin.from("events").select("passcode_hash").eq("id", event.id).single()).data!.passcode_hash).toBeNull();
     // The passcode never reaches the audit trail.
@@ -297,6 +310,43 @@ describe("publishing", () => {
     const mid = (await admin.from("events").select("published_content").eq("id", event.id).single()).data!.published_content;
     expect(JSON.stringify(mid)).not.toContain("Sarah");
     expect((await publishEvent(db, owner(a.id), event.id)).version).toBe(2);
+  });
+
+  // Review F11: the theme is part of what is published, and publishing runs
+  // the same template checks as saving a draft.
+  it("snapshots the theme, so draft theme edits are not live until republished", async () => {
+    const event = await newEvent(a.id);
+    const template = getTemplate("wedding-draft", 1)!;
+    const [first, second] = template.palettes;
+    expect(second).toBeDefined();
+    await saveDraft(db, owner(a.id), event.id, await filledContent(event.id), { palette: first.id });
+    await pay(event.id, a.id, "essential");
+    await publishEvent(db, owner(a.id), event.id);
+    const published = async () =>
+      ((await admin.from("events").select("published_content").eq("id", event.id).single()).data!.published_content as { theme?: { palette?: string } })
+        .theme;
+    expect(await published()).toEqual({ palette: first.id });
+
+    await saveDraft(db, owner(a.id), event.id, await filledContent(event.id), { palette: second.id });
+    expect(await published()).toEqual({ palette: first.id });
+    await publishEvent(db, owner(a.id), event.id);
+    expect(await published()).toEqual({ palette: second.id });
+  });
+
+  it("refuses to publish a draft that does not fit its template", async () => {
+    const event = await newEvent(a.id);
+    await saveDraft(db, owner(a.id), event.id, await filledContent(event.id), {});
+    await pay(event.id, a.id, "essential");
+    // Written around saveDraft (e.g. straight to the column): an unknown palette.
+    await admin.from("events").update({ theme: { palette: "not-a-palette" } }).eq("id", event.id);
+    expect(await code(publishEvent(db, owner(a.id), event.id))).toBe("invalid_content");
+    // And a field the template does not have.
+    const content = await filledContent(event.id);
+    (content.fields as Record<string, { ar: string; en: string }>).smuggled = { ar: "x", en: "x" };
+    await admin.from("events").update({ theme: {}, content: content as never }).eq("id", event.id);
+    expect(await code(publishEvent(db, owner(a.id), event.id))).toBe("invalid_content");
+    const { data } = await admin.from("events").select("status, published_content").eq("id", event.id).single();
+    expect(data).toEqual({ status: "draft", published_content: null });
   });
 
   it("refuses a draft with an empty required field and strangers", async () => {
@@ -446,6 +496,16 @@ describe("invitations", () => {
     await revokeInvitation(db, owner(a.id), event.id, created[0].id);
     expect(await seatsUsed(db, event.id)).toBe(40);
     await addInvitations(db, owner(a.id), event.id, [group("Cousins", 60)]);
+  });
+
+  // Review F9: the seat sum and the insert happen under a lock on the event.
+  it("parallel requests cannot together exceed the guest cap", async () => {
+    const event = await newEvent(a.id);
+    await pay(event.id, a.id, "essential");
+    const results = await Promise.all(Array.from({ length: 8 }, (_, i) => code(addInvitations(db, owner(a.id), event.id, [group(`Table ${i}`, 30)]))));
+    expect(results.filter((r) => r === "resolved")).toHaveLength(3);
+    expect(results.filter((r) => r === "guest_cap")).toHaveLength(5);
+    expect(await seatsUsed(db, event.id)).toBe(90);
   });
 
   it("allows personal links and unlimited guests on premium, validating every row", async () => {

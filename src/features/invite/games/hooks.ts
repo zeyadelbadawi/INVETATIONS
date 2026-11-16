@@ -12,7 +12,7 @@ const base = (slug: string) => `/api/guest/${encodeURIComponent(slug)}`;
 
 async function submit(path: string, body: unknown): Promise<SubmitResult> {
   const result = await apiPost<{ points?: number }>(path, body);
-  return result.ok ? { ok: true, points: result.data?.points ?? 0 } : { ok: false, error: result.error };
+  return result.ok ? { ok: true, points: typeof result.data?.points === "number" ? result.data.points : null } : { ok: false, error: result.error };
 }
 
 export function useGames(): GamesData | null {

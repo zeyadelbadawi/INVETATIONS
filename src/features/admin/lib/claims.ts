@@ -6,7 +6,7 @@ import { audit } from "@/lib/audit";
 import { eventName } from "@/features/host/lib/display";
 import { AdminError } from "./errors";
 import { dbNow } from "./grants";
-import { isHoldingEmail } from "./events";
+import { isHoldingAccount } from "./events";
 
 // Claim links hand an event built by staff (owned by a holding account) to the
 // customer (security A4). The token is 128 random bits, travels only in the
@@ -48,9 +48,10 @@ export async function createClaim(db: AdminClient, adminId: string, eventId: unk
   const { data: event } = await db.from("events").select("id, owner_id").eq("id", id.data).maybeSingle();
   if (!event) throw new AdminError("not_found");
   // Only events still held for a customer can be handed over: a claim link must
-  // never move an event away from a real customer's account.
-  const { data: owner } = await db.rpc("staff_user_emails", { p_ids: [event.owner_id] });
-  if (!isHoldingEmail(owner?.[0]?.email)) throw new AdminError("forbidden");
+  // never move an event away from a real customer's account. The owner must be
+  // a recorded holding account that the auth server still reports as one
+  // (never judged by its email address).
+  if (!(await isHoldingAccount(db, event.owner_id))) throw new AdminError("forbidden");
 
   // One live link per event: earlier unclaimed links stop working.
   const now = await dbNow(db);
@@ -91,8 +92,8 @@ export async function previewClaim(db: AdminClient, who: ClaimIdentity, rawToken
   if (claim.email_lower !== email) throw new AdminError("claim_wrong_email");
   const now = await dbNow(db);
   if (new Date(claim.expires_at).getTime() <= now.getTime()) throw new AdminError("claim_unavailable");
-  const { data: event } = await db.from("events").select("slug, content").eq("id", claim.event_id).maybeSingle();
-  if (!event) throw new AdminError("claim_unavailable");
+  const { data: event } = await db.from("events").select("slug, content, owner_id").eq("id", claim.event_id).maybeSingle();
+  if (!event || !(await isHoldingAccount(db, event.owner_id))) throw new AdminError("claim_unavailable");
   return { eventName: eventName(event.content, locale, event.slug) };
 }
 
@@ -103,6 +104,13 @@ export async function acceptClaim(db: AdminClient, who: ClaimIdentity, rawToken:
   const email = verifiedEmail(who);
   const token = tokenOrFail(rawToken);
   const hash = claimTokenHash(token);
+  // The event must still sit with a holding account. The database function
+  // checks the same against holding_accounts inside the transfer statement.
+  const { data: pending } = await db.from("event_claims").select("event_id").eq("token_hash", hash).maybeSingle();
+  if (pending) {
+    const { data: event } = await db.from("events").select("owner_id").eq("id", pending.event_id).maybeSingle();
+    if (!event || !(await isHoldingAccount(db, event.owner_id))) throw new AdminError("claim_unavailable");
+  }
   const { data, error } = await db.rpc("claim_event", { p_token_hash: hash, p_user_id: who.userId, p_email_lower: email });
   if (error) throw new Error(`claim failed: ${error.message}`);
   const row = data?.[0];

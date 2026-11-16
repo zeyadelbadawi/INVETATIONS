@@ -13,36 +13,68 @@ import { AdminError } from "./errors";
 
 // Holding accounts own events staff build for customers without an account,
 // until the customer claims them. They can never sign in (banned for ~100
-// years, random password, undeliverable .invalid address). Found by email, not
-// by a stored id; a new one is opened when the current one is full (each host
-// account has an event cap).
+// years, random password, undeliverable .invalid address). They are created
+// only here, with the service key, and recorded by id in the server-only
+// `holding_accounts` table. They are never looked up by email: anyone can sign
+// up with any address, so an email proves nothing (review F1). Before an
+// account is used it is re-checked with the auth server: app_metadata (which
+// only the service key can write) must say `holding` and the ban must hold.
 const HOLDING_DOMAIN = "no-reply.invalid";
 const MAX_HOLDING_ACCOUNTS = 50;
 
-export function holdingEmail(n: number): string {
-  return `holding-${n}@${HOLDING_DOMAIN}`;
+export function holdingEmail(tag: string): string {
+  return `holding-${tag}@${HOLDING_DOMAIN}`;
 }
 
-export function isHoldingEmail(email: string | null | undefined): boolean {
-  return typeof email === "string" && /^holding-\d+@no-reply\.invalid$/.test(email.toLowerCase());
+// A recorded holding account that the auth server still reports as a banned
+// server-made account. Anything else is refused.
+export async function isHoldingAccount(db: AdminClient, userId: string | null | undefined): Promise<boolean> {
+  if (typeof userId !== "string" || !z.uuid().safeParse(userId).success) return false;
+  const { data: row } = await db.from("holding_accounts").select("user_id").eq("user_id", userId).maybeSingle();
+  if (!row) return false;
+  const { data, error } = await db.auth.admin.getUserById(userId);
+  if (error || !data?.user) return false;
+  const banned = data.user.banned_until ? new Date(data.user.banned_until).getTime() > Date.now() : false;
+  return data.user.app_metadata?.holding === true && banned;
 }
 
-async function findOrCreateHolding(db: AdminClient, n: number): Promise<string> {
-  const email = holdingEmail(n);
-  const { data: existing } = await db.rpc("staff_user_id_by_email", { p_email: email });
-  if (typeof existing === "string" && existing) return existing;
+// Which of these users are recorded holding accounts (for display only).
+async function holdingIds(db: AdminClient, ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const { data } = await db.from("holding_accounts").select("user_id").in("user_id", ids);
+  return new Set((data ?? []).map((r) => r.user_id));
+}
+
+async function createHolding(db: AdminClient): Promise<string> {
   const { data, error } = await db.auth.admin.createUser({
-    email,
+    email: holdingEmail(randomBytes(9).toString("hex")),
     password: randomBytes(32).toString("base64url"),
     email_confirm: true,
     ban_duration: "876000h",
     app_metadata: { holding: true },
   });
-  if (data?.user) return data.user.id;
-  // Another request created it first.
-  const { data: raced } = await db.rpc("staff_user_id_by_email", { p_email: email });
-  if (typeof raced === "string" && raced) return raced;
-  throw new Error(`holding account unavailable: ${error?.code ?? "unknown"}`);
+  if (!data?.user) throw new Error(`holding account unavailable: ${error?.code ?? "unknown"}`);
+  const { error: recordError } = await db.from("holding_accounts").insert({ user_id: data.user.id });
+  if (recordError) {
+    await db.auth.admin.deleteUser(data.user.id);
+    throw new Error(`holding account not recorded: ${recordError.message}`);
+  }
+  return data.user.id;
+}
+
+// The holding accounts to try, oldest first, then a fresh one while there is room.
+async function* holdingAccounts(db: AdminClient): AsyncGenerator<string> {
+  const { data: rows, error } = await db
+    .from("holding_accounts")
+    .select("user_id")
+    .order("created_at")
+    .order("user_id")
+    .limit(MAX_HOLDING_ACCOUNTS);
+  if (error) throw new Error(`holding lookup failed: ${error.message}`);
+  for (const row of rows ?? []) {
+    if (await isHoldingAccount(db, row.user_id)) yield row.user_id;
+  }
+  if ((rows ?? []).length < MAX_HOLDING_ACCOUNTS) yield await createHolding(db);
 }
 
 export type MaskRole = "admin" | "support" | "designer" | string;
@@ -71,7 +103,9 @@ export async function searchEvents(db: AdminClient, query: unknown, role: MaskRo
   if (q.length < 3) return [];
   const { data, error } = await db.rpc("staff_find_events", { p_query: q, p_limit: 50 });
   if (error) throw new Error(`event search failed: ${error.message}`);
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+  const holding = await holdingIds(db, [...new Set(rows.map((row) => row.owner_id))]);
+  return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     kind: row.kind,
@@ -79,7 +113,7 @@ export async function searchEvents(db: AdminClient, query: unknown, role: MaskRo
     planId: row.plan_id,
     createdAt: row.created_at,
     ownerEmail: maskEmail(row.owner_email, role),
-    holding: isHoldingEmail(row.owner_email),
+    holding: holding.has(row.owner_id),
   }));
 }
 
@@ -108,7 +142,7 @@ export async function eventSummary(db: AdminClient, eventId: string, role: MaskR
     .eq("id", eventId)
     .maybeSingle();
   if (!event) return null;
-  const [{ data: emails }, { data: orders }, { data: claims }, { data: now }] = await Promise.all([
+  const [{ data: emails }, { data: orders }, { data: claims }, { data: now }, holding] = await Promise.all([
     db.rpc("staff_user_emails", { p_ids: [event.owner_id] }),
     db.from("orders").select("id, status, plan_id, amount_egp, created_at, paid_at").eq("event_id", event.id).order("created_at", { ascending: false }).limit(50),
     db
@@ -118,6 +152,7 @@ export async function eventSummary(db: AdminClient, eventId: string, role: MaskR
       .order("created_at", { ascending: false })
       .limit(20),
     db.rpc("db_now"),
+    holdingIds(db, [event.owner_id]),
   ]);
   const ownerEmail = emails?.[0]?.email ?? null;
   const clock = typeof now === "string" ? new Date(now).getTime() : Date.now();
@@ -131,7 +166,7 @@ export async function eventSummary(db: AdminClient, eventId: string, role: MaskR
     planId: event.plan_id,
     createdAt: event.created_at,
     ownerEmail: maskEmail(ownerEmail, role),
-    holding: isHoldingEmail(ownerEmail),
+    holding: holding.has(event.owner_id),
     orders: (orders ?? []).map((o) => ({ id: o.id, status: o.status, planId: o.plan_id, amountEgp: o.amount_egp, createdAt: o.created_at, paidAt: o.paid_at })),
     claims: (claims ?? []).map((c) => ({
       id: c.id,
@@ -156,8 +191,7 @@ export async function createEventOnBehalf(db: AdminClient, adminId: string, raw:
   if (!parsed.success) throw new AdminError("invalid");
   const { email, ...input } = parsed.data;
 
-  for (let n = 1; n <= MAX_HOLDING_ACCOUNTS; n++) {
-    const holdingId = await findOrCreateHolding(db, n);
+  for await (const holdingId of holdingAccounts(db)) {
     try {
       const event = await createEvent(db, holdingId, input);
       await audit({

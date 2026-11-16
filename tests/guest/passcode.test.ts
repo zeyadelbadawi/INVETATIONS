@@ -29,7 +29,15 @@ import { ctx, get, postJson, sessionToken } from "./route-helpers";
 import { contentSchema, splitForPublish } from "@/content/schema";
 import type { PublicEvent } from "@/lib/events/published";
 import { hashPasscode } from "@/features/host/lib/passcode";
-import { checkPasscode, failureKey, PASSCODE_FAILURES, passcodeCookieName, signPasscodeGrant, verifyPasscodeGrant } from "@/lib/guest/passcode";
+import {
+  checkPasscode,
+  failureKey,
+  PASSCODE_FAILURES,
+  PASSCODE_FAILURES_PER_IP,
+  passcodeCookieName,
+  signPasscodeGrant,
+  verifyPasscodeGrant,
+} from "@/lib/guest/passcode";
 import { sessionCookieName } from "@/lib/guest/session";
 import { readLive } from "@/lib/live";
 import { POST as passcodePost } from "@/app/api/guest/[slug]/passcode/route";
@@ -159,13 +167,40 @@ describe("passcode endpoint", () => {
     expect((await details(a)).status).toBe(200);
   });
 
-  it("locks the event after too many wrong guesses, even for the right passcode", async () => {
+  // Review F3: throttles are reserved before the slow check, count failures
+  // only, and the event-wide one never shuts out a guest with the right passcode.
+  it("counts wrong guesses per address before checking, so a parallel burst cannot race past", async () => {
     const d = await gatedEvent();
-    for (let i = 0; i < PASSCODE_FAILURES.max; i++) expect((await unlock(d, `wrong-${i}`)).status).toBe(401);
-    const locked = await unlock(d, PASSCODE);
-    expect(locked.status).toBe(429);
-    expect(await locked.json()).toEqual({ error: "locked" });
+    const ip = { "x-forwarded-for": "198.51.100.7" };
+    const burst = await Promise.all(Array.from({ length: 30 }, (_, i) => unlock(d, `wrong-${i}`, ip)));
+    const tally = (status: number) => burst.filter((r) => r.status === status).length;
+    expect(tally(401)).toBeLessThanOrEqual(PASSCODE_FAILURES_PER_IP.max);
+    expect(tally(401) + tally(429)).toBe(30);
+    // That address is now out of tries, even with the right passcode...
+    expect((await unlock(d, PASSCODE, ip)).status).toBe(429);
     expect(state.jar.size).toBe(0);
+    // ...but everyone else gets in.
+    expect((await unlock(d, PASSCODE)).status).toBe(200);
+  });
+
+  it("right passcodes from one address (a wedding hall) never use up its allowance", async () => {
+    const d = await gatedEvent();
+    const ip = { "x-forwarded-for": "198.51.100.8" };
+    for (let i = 0; i < PASSCODE_FAILURES_PER_IP.max + 5; i++) expect((await unlock(d, PASSCODE, ip)).status).toBe(200);
+    expect((await unlock(d, "a-wrong-one", ip)).status).toBe(401);
+  });
+
+  it("an event-wide flood of wrong guesses locks out wrong guesses, not the right passcode", async () => {
+    const d = await gatedEvent();
+    // Fill the event-wide failure budget for the current window.
+    const windowStart = new Date(Math.floor(Date.now() / 1000 / PASSCODE_FAILURES.windowSeconds) * PASSCODE_FAILURES.windowSeconds * 1000);
+    await admin.from("rate_limits").upsert({ key: failureKey(d.id), window_start: windowStart.toISOString(), count: PASSCODE_FAILURES.max });
+    const wrong = await unlock(d, "still-wrong");
+    expect(wrong.status).toBe(429);
+    expect(await wrong.json()).toEqual({ error: "locked" });
+    const right = await unlock(d, PASSCODE);
+    expect(right.status).toBe(200);
+    expect(state.jar.get(passcodeCookieName(d.id))).toBeDefined();
     // Other events are unaffected.
     expect((await unlock(b, PASSCODE)).status).toBe(200);
   });

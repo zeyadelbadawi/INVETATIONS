@@ -42,27 +42,24 @@ export async function joinAsNewPlayer(event: PublicEvent, guest: GuestContext, i
   if (name.length < 2) return { ok: false, reason: "invalid_name" };
 
   const db = adminDb();
-  const { count } = await db
-    .from("players")
-    .select("id", { count: "exact", head: true })
-    .eq("event_id", event.id)
-    .eq("invitation_id", guest.invitation.id)
-    .is("removed_at", null);
-  const cap = guest.invitation.kind === "personal" ? guest.invitation.paxCap : guest.invitation.maxPlayers;
-  if ((count ?? 0) >= cap) return { ok: false, reason: "full" };
-
   const teamId = await chooseTeam(event, guest, input.teamKey);
   if (teamId === false) return { ok: false, reason: "bad_team" };
 
   // Walk-ins from the open link wait for the host when approval is on.
   const approved = !(guest.invitation.kind === "open" && event.settings.openLinkApproval);
 
-  const { data: row, error } = await db
-    .from("players")
-    .insert({ event_id: event.id, invitation_id: guest.invitation.id, name, team_id: teamId, approved })
-    .select("id, name, team_id, approved, team_switched_at")
-    .single();
-  if (error || !row) throw new Error(`player insert failed: ${error?.message}`);
+  // One statement locks the invitation, counts its players and inserts only
+  // under the cap, so parallel joins cannot overshoot it (review F9).
+  const { data: rows, error } = await db.rpc("join_player", {
+    p_event_id: event.id,
+    p_invitation_id: guest.invitation.id,
+    p_name: name,
+    p_team_id: teamId as string,
+    p_approved: approved,
+  });
+  if (error) throw new Error(`player insert failed: ${error.message}`);
+  const row = rows?.[0];
+  if (!row) return { ok: false, reason: "full" };
 
   // Household members re-claim by name; everyone else needs a code to come back
   // on another browser (security S2).
@@ -94,29 +91,25 @@ export async function claimPlayer(event: PublicEvent, guest: GuestContext, playe
   if (!p || p.removed_at || p.invitation_id !== guest.invitation.id) return { ok: false, reason: "not_found" };
 
   if (guest.invitation.kind !== "personal") {
-    const { data: secret } = await db
-      .from("player_secrets")
-      .select("rejoin_hmac, failed_attempts, locked_until")
-      .eq("player_id", p.id)
-      .maybeSingle();
-    if (!secret) return { ok: false, reason: "not_found" };
-    if (secret.locked_until && new Date(secret.locked_until).getTime() > Date.now()) return { ok: false, reason: "locked" };
+    // The attempt is counted before the code is checked, in one statement, so
+    // a burst of parallel guesses locks after MAX_FAILED like a slow one does
+    // (review F2). 'last' means this attempt locks the player unless it is right.
+    const { data: slot, error } = await db.rpc("rejoin_reserve", {
+      p_player_id: p.id,
+      p_max: MAX_FAILED,
+      p_lock_seconds: LOCK_MINUTES * 60,
+    });
+    if (error) throw new Error(`rejoin check failed: ${error.message}`);
+    if (slot === "not_found") return { ok: false, reason: "not_found" };
+    if (slot !== "ok" && slot !== "last") return { ok: false, reason: "locked" };
 
+    const { data: secret } = await db.from("player_secrets").select("rejoin_hmac").eq("player_id", p.id).maybeSingle();
+    if (!secret) return { ok: false, reason: "not_found" };
     const expected = parseBytea(secret.rejoin_hmac as unknown as string);
     const given = hmac(`rejoin:${p.id}`, code ?? "");
-    if (!code || !safeEqual(expected, given)) {
-      const failed = secret.failed_attempts + 1;
-      const lock = failed >= MAX_FAILED;
-      await db
-        .from("player_secrets")
-        .update({
-          failed_attempts: lock ? 0 : failed,
-          locked_until: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null,
-        })
-        .eq("player_id", p.id);
-      return { ok: false, reason: lock ? "locked" : "bad_code" };
-    }
-    await db.from("player_secrets").update({ failed_attempts: 0, locked_until: null }).eq("player_id", p.id);
+    if (!code || !safeEqual(expected, given)) return { ok: false, reason: slot === "last" ? "locked" : "bad_code" };
+    const { error: resetError } = await db.rpc("rejoin_success", { p_player_id: p.id });
+    if (resetError) throw new Error(`rejoin reset failed: ${resetError.message}`);
   }
 
   await attachPlayer(guest.sessionId, event.id, p.id);

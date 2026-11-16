@@ -50,6 +50,29 @@ describe("joining", () => {
   });
 });
 
+// Another browser on the same invitation: a fresh session, no player yet.
+async function otherBrowser(eventId: string, like: Awaited<ReturnType<typeof makeGuest>>) {
+  const { data: session } = await admin
+    .from("guest_sessions")
+    .insert({ token_hash: hash(randomBytes(32).toString("hex")), event_id: eventId, invitation_id: like.invitation.id, expires_at: new Date(Date.now() + 86400000).toISOString() })
+    .select("id")
+    .single();
+  return { ...like, sessionId: session!.id, player: null };
+}
+
+describe("caps under concurrency (review F9)", () => {
+  it("ten parallel joins on a household of two make exactly two players", async () => {
+    const { event } = await makeLiveEvent();
+    const first = await makeGuest(event, "personal", 2);
+    const browsers = [first, ...(await Promise.all(Array.from({ length: 9 }, () => otherBrowser(event.id, first))))];
+    const results = await Promise.all(browsers.map((g, i) => joinAsNewPlayer(event, g, { name: `Member ${i}`, teamKey: "boy" })));
+    expect(results.filter((r) => r.ok)).toHaveLength(2);
+    expect(results.filter((r) => !r.ok && r.reason === "full")).toHaveLength(8);
+    const { count } = await admin.from("players").select("id", { count: "exact", head: true }).eq("invitation_id", first.invitation.id);
+    expect(count).toBe(2);
+  });
+});
+
 describe("re-claiming a player", () => {
   it("needs the right code on shared links and locks after five wrong tries", async () => {
     const { event } = await makeLiveEvent();
@@ -74,6 +97,28 @@ describe("re-claiming a player", () => {
 
     await admin.from("player_secrets").update({ locked_until: null }).eq("player_id", joined.player.id);
     expect((await claimPlayer(event, other, joined.player.id, joined.rejoinCode!)).ok).toBe(true);
+  });
+
+  // Review F2: the attempt is counted before the code is checked, so a burst of
+  // parallel guesses from many browsers cannot all read "no failures yet".
+  it("locks after five guesses even when thirty arrive at once", async () => {
+    const { event } = await makeLiveEvent();
+    const first = await makeGuest(event, "group");
+    const joined = await joinAsNewPlayer(event, first, { name: "Victim", teamKey: "girl" });
+    if (!joined.ok) throw new Error("join failed");
+    const others = await Promise.all(Array.from({ length: 30 }, () => otherBrowser(event.id, first)));
+    const wrong = (i: number) => String((Number(joined.rejoinCode) + 1 + i) % 1_000_000).padStart(6, "0");
+    const results = await Promise.all(others.map((g, i) => claimPlayer(event, g, joined.player.id, wrong(i))));
+    const reasons = results.map((r) => (r.ok ? "ok" : r.reason));
+    // At most five codes were compared: four "bad_code" and the one that locked.
+    expect(reasons.filter((r) => r === "bad_code").length).toBeLessThanOrEqual(4);
+    expect(reasons.filter((r) => r === "ok")).toHaveLength(0);
+    expect(reasons.filter((r) => r === "locked").length).toBeGreaterThanOrEqual(26);
+    const { data: secret } = await admin.from("player_secrets").select("failed_attempts, locked_until").eq("player_id", joined.player.id).single();
+    expect(secret!.failed_attempts).toBe(5);
+    expect(new Date(secret!.locked_until!).getTime()).toBeGreaterThan(Date.now() + 14 * 60_000);
+    // The right code is refused during the lock.
+    expect(await claimPlayer(event, others[0], joined.player.id, joined.rejoinCode!)).toMatchObject({ ok: false, reason: "locked" });
   });
 
   it("refuses a player from another invitation", async () => {

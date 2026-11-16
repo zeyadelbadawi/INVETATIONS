@@ -23,7 +23,7 @@ function utcStamp(date: Date): string {
 export function escapeIcsText(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\;")
+    .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");

@@ -18,6 +18,16 @@ function effectiveState(row: GameRow, now: number): GameState {
   return row.state as GameState;
 }
 
+// A quiz's score depends on the truth, so while it is open nothing about it
+// leaves the server: no points in the answer response, no per-player total in
+// the games list, and no ledger entry that would move the public team totals.
+// Its points are added to the ledger when the host closes or settles it.
+// Vote, prediction and clues award participation points only, which say
+// nothing about the truth.
+export function hidesScoreWhileOpen(kind: string): boolean {
+  return kind === "quiz";
+}
+
 const seedFor = (gameId: string, playerId: string | undefined) => `${gameId}:${playerId ?? "anon"}`;
 
 export type GameSummary = {
@@ -26,7 +36,9 @@ export type GameSummary = {
   state: GameState;
   view: unknown;
   answered: string[];
-  myPoints: number;
+  // Null for a quiz that is still open: a score would tell the player which
+  // answers were right (review F6). Shown once the quiz is closed.
+  myPoints: number | null;
   tally: unknown;
   results: unknown;
 };
@@ -76,7 +88,7 @@ export async function listGames(event: PublicEvent, guest: GuestContext | null):
       state,
       view: bound.publicView(state, { now, seed: seedFor(row.id, player?.id) }),
       answered: mine.map((a) => a.question_id),
-      myPoints: mine.reduce((sum, a) => sum + a.score, 0),
+      myPoints: hidesScoreWhileOpen(row.kind) && state === "open" ? null : mine.reduce((sum, a) => sum + a.score, 0),
       tally: player
         ? bound.tally(state, all.map((a) => ({ questionId: a.question_id, answer: a.payload })), { viewerHasAnswered: mine.length > 0 })
         : null,
@@ -147,7 +159,7 @@ export async function serveQuestion(event: PublicEvent, player: NonNullable<Gues
 }
 
 export type AnswerResult =
-  | { ok: true; points: number }
+  | { ok: true; points?: number }
   | { ok: false; reason: "not_open" | "invalid" | "already_answered" };
 
 export async function submitAnswer(
@@ -196,6 +208,7 @@ export async function submitAnswer(
     if (error.code === "23505") return { ok: false, reason: "already_answered" };
     throw new Error(`answer failed: ${error.message}`);
   }
+  if (hidesScoreWhileOpen(game.bound.kind)) return { ok: true };
   await award(event.id, player, submitReason(game.bound.kind), gameRef(gameId, questionId), points);
   return { ok: true, points };
 }

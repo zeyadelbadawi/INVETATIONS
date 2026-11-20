@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { lang } from "next/root-params";
 import { brand } from "@/config/brand";
 import { dirOf, isLocale, locales } from "@/i18n/config";
-import { uiFont } from "@/app/fonts";
+import { siteDisplayFont, uiFont } from "@/app/fonts";
 import "@/app/globals.css";
 
 export function generateStaticParams() {
@@ -23,7 +23,7 @@ export default async function SiteLayout({ children }: LayoutProps<"/[lang]">) {
   const l = await lang();
   if (!isLocale(l)) notFound();
   return (
-    <html lang={l} dir={dirOf(l)} className={`${uiFont.variable} h-full antialiased`}>
+    <html lang={l} dir={dirOf(l)} className={`${uiFont.variable} ${siteDisplayFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-surface text-fg">{children}</body>
     </html>
   );

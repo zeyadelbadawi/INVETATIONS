@@ -123,7 +123,8 @@ export function ScrollScene({
   const key = sceneKey(source);
   const variant = pickVariant(manifest, variantName);
   const videoUrl = sceneFileUrl(source, variant.src);
-  const poster = posterUrls(source, manifest);
+  // The still version shows the final frame, under the overlays in their final state.
+  const poster = posterUrls(source, manifest, animated ? "first" : "last");
   const panFrom = panX?.[0];
   const panTo = panX?.[1];
 

@@ -3,25 +3,53 @@
 
 /*
  * Brand tokens. Swapping the brand means changing these values and src/config/brand.ts.
- * No component uses a raw colour.
+ * No component uses a raw colour. See docs/product/2026-11-20-redesign-plan.md §3.
+ *
+ * The public site (marketing, auth) lives on the night set; the app surfaces
+ * (dashboard, editor, admin) on the light neutral set. Both share one accent.
  */
 :root {
-  --brand-ink: #17131f;
-  --brand-paper: #f7f2ea;
-  --brand-primary: #e4572e;
-  --brand-secondary: #1f8a7a;
-  --brand-highlight: #e9b44c;
+  /* Night set, sampled from the three scenes (plan §3): the green-black of the
+     garden and the hall, the ivory of the box ribbon, the lantern flame, the
+     stone and blue-hour sky. */
+  --brand-night: #0a0d0c;
+  --brand-dusk: #151917;
+  --brand-bone: #efe4d3;
+  --brand-ash: #98a19b;
+  --brand-lantern: #cc8d35;
+  --brand-twilight: #93a2ad;
+
+  /* Light set for working surfaces. */
+  --brand-ink: #131715;
+  --brand-paper: #f2f3f1;
+  --brand-primary: var(--brand-lantern);
+  --brand-secondary: #3f5a8f;
+  --brand-highlight: var(--brand-lantern);
 
   --surface: var(--brand-paper);
   --surface-raised: #ffffff;
   --text: var(--brand-ink);
-  --text-muted: color-mix(in oklab, var(--brand-ink) 62%, var(--brand-paper));
-  --border: color-mix(in oklab, var(--brand-ink) 14%, var(--brand-paper));
+  --text-muted: #59605c;
+  --border: #e2e1dd;
   --danger: #b3261e;
-  --on-primary: #ffffff;
+  --on-primary: var(--brand-night);
+  /* Accent text on light surfaces (the lantern itself is too light for text on white). */
+  --accent-ink: #8a5419;
+
+  --radius-control: 6px;
+  --radius-panel: 12px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
+  --color-night: var(--brand-night);
+  --color-dusk: var(--brand-dusk);
+  --color-bone: var(--brand-bone);
+  --color-ash: var(--brand-ash);
+  --color-lantern: var(--brand-lantern);
+  --color-twilight: var(--brand-twilight);
+  --color-accent-ink: var(--accent-ink);
+
   --color-ink: var(--brand-ink);
   --color-paper: var(--brand-paper);
   --color-primary: var(--brand-primary);
@@ -34,21 +62,58 @@
   --color-line: var(--border);
   --color-danger: var(--danger);
   --color-on-primary: var(--on-primary);
+
   --font-sans: var(--font-ui), system-ui, sans-serif;
+  --font-display: var(--font-display-site), var(--font-ui), system-ui, sans-serif;
+
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --ease-out-soft: var(--ease-out);
 }
 
 html {
   background: var(--surface);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--font-ui), system-ui, sans-serif;
 }
 
+/* Dark scopes (public site, auth) flip the working tokens so shared components follow. */
+.theme-night {
+  --surface: var(--brand-night);
+  --surface-raised: var(--brand-dusk);
+  --text: var(--brand-bone);
+  --text-muted: var(--brand-ash);
+  --border: color-mix(in oklab, var(--brand-bone) 16%, var(--brand-night));
+  --accent-ink: var(--brand-lantern);
+  --brand-secondary: var(--brand-twilight);
+  --danger: #ff8a7a;
+  background: var(--surface);
+  color: var(--text);
+  color-scheme: dark;
+}
+
 :focus-visible {
   outline: 2px solid var(--brand-secondary);
   outline-offset: 2px;
+}
+
+.theme-night :focus-visible {
+  outline-color: var(--brand-lantern);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 @media (prefers-reduced-motion: reduce) {

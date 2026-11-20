@@ -30,7 +30,8 @@ export type VideoManifest = {
   frameCount: number;
   /** 0..1, the crop / object-position centre. */
   focal: { x: number; y: number };
-  poster: { avif: string; webp: string; width: number; height: number };
+  /** `last` is the final frame: what the still version shows, so end-state copy sits on the right picture. */
+  poster: { avif: string; webp: string; width: number; height: number; last?: { avif: string; webp: string } };
   variants: VideoVariant[];
   /** One number per frame, rising 0..1. */
   timing: number[];
@@ -78,7 +79,9 @@ export function variantUrl(source: SceneSource, manifest: VideoManifest, name: V
   return sceneFileUrl(source, pickVariant(manifest, name).src);
 }
 
-export function posterUrls(source: SceneSource, manifest: VideoManifest): { avif: string; webp: string } {
+export function posterUrls(source: SceneSource, manifest: VideoManifest, frame: "first" | "last" = "first"): { avif: string; webp: string } {
+  const last = manifest.poster.last;
+  if (frame === "last" && last) return { avif: sceneFileUrl(source, last.avif), webp: sceneFileUrl(source, last.webp) };
   return {
     avif: sceneFileUrl(source, manifest.poster.avif),
     webp: sceneFileUrl(source, manifest.poster.webp),
@@ -124,6 +127,7 @@ export function parseManifest(input: unknown): VideoManifest {
     return fail("frameCount must be a positive integer");
   }
   if (!m.poster || typeof m.poster.avif !== "string" || typeof m.poster.webp !== "string") return fail("missing poster");
+  if (m.poster.last !== undefined && (typeof m.poster.last?.avif !== "string" || typeof m.poster.last?.webp !== "string")) return fail("poster.last is incomplete");
   if (!m.focal || typeof m.focal.x !== "number" || typeof m.focal.y !== "number") return fail("missing focal");
   if (!Array.isArray(m.timing) || m.timing.length !== m.frameCount) return fail("timing must have one entry per frame");
   if (!Array.isArray(m.variants) || m.variants.length === 0) return fail("no variants");

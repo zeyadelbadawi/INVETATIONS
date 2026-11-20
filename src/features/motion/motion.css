@@ -1,0 +1,89 @@
+/*
+ * CSS half of the scroll primitives (Scrub.tsx). Everything reads `--p`
+ * (0…1, written by the scrub loop) with a fallback of 1: no JS = final state.
+ *
+ * Helpers:
+ *   --q  = progress inside a window: set --from / --to on the element, use `.mo-win`.
+ *   --x-dir = -1 in LTR, 1 in RTL, for horizontal travel that follows reading order.
+ */
+
+:root {
+  --x-dir: -1;
+}
+[dir="rtl"] {
+  --x-dir: 1;
+}
+
+.mo-win {
+  --q: clamp(0, (var(--p, 1) - var(--from, 0)) / (var(--to, 1) - var(--from, 0)), 1);
+}
+
+/* Fade-and-settle tied to a window. Use for single elements that enter, not for every block. */
+.mo-settle {
+  --q: clamp(0, (var(--p, 1) - var(--from, 0)) / (var(--to, 1) - var(--from, 0)), 1);
+  opacity: var(--q);
+  transform: translate3d(0, calc((1 - var(--q)) * var(--settle-y, 2.5rem)), 0);
+}
+
+/* Pinned track and stage. */
+.mo-pin {
+  position: relative;
+  height: var(--pin-length, 200svh);
+}
+.mo-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+.mo-pin[data-still] {
+  height: auto;
+}
+.mo-pin[data-still] > .mo-stage {
+  position: relative;
+  height: auto;
+  min-height: 100svh;
+  overflow: visible;
+}
+
+/* Word-by-word reveal. */
+.mo-words {
+  --src: var(--p, 1);
+}
+.mo-words[data-src="hold"] {
+  --src: var(--seq-hold, 1);
+}
+.mo-words[data-src="progress"] {
+  --src: var(--seq-progress, 1);
+}
+.mo-w {
+  --q: clamp(0, (var(--src) - var(--from, 0)) / (var(--to, 1) - var(--from, 0)), 1);
+  --wp: clamp(0, (var(--q) * (var(--n, 1) + 2) - var(--i, 0)) / 2, 1);
+  display: inline-block;
+  opacity: calc(var(--word-dim, 0.12) + (1 - var(--word-dim, 0.12)) * var(--wp));
+  filter: blur(calc((1 - var(--wp)) * var(--word-blur, 6px)));
+  transform: translate3d(0, calc((1 - var(--wp)) * 0.2em), 0);
+}
+.mo-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scrub],
+  .mo-words {
+    --p: 1 !important;
+  }
+  .mo-w {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}

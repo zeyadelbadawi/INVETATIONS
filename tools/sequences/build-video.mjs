@@ -74,6 +74,9 @@ for (const v of VARIANTS) {
 const posterSize = VARIANTS[0];
 ffmpeg(["-i", join(outDir, "desktop.mp4"), "-frames:v", "1", "-c:v", "libwebp", "-quality", "82", join(outDir, "poster.webp")]);
 ffmpeg(["-i", join(outDir, "desktop.mp4"), "-frames:v", "1", "-c:v", "libaom-av1", "-still-picture", "1", "-crf", "30", "-cpu-used", "6", join(outDir, "poster.avif")]);
+// The last frame, for the still version (reduced motion, weak devices) and closing shots.
+ffmpeg(["-sseof", "-0.1", "-i", join(outDir, "desktop.mp4"), "-frames:v", "1", "-c:v", "libwebp", "-quality", "82", join(outDir, "last.webp")]);
+ffmpeg(["-sseof", "-0.1", "-i", join(outDir, "desktop.mp4"), "-frames:v", "1", "-c:v", "libaom-av1", "-still-picture", "1", "-crf", "30", "-cpu-used", "6", join(outDir, "last.avif")]);
 
 const timing = args["no-motion"]
   ? linearTiming(sourceFrames)
@@ -85,7 +88,7 @@ const manifest = {
   fps,
   frameCount: sourceFrames,
   focal: { x: focalX, y: focalY },
-  poster: { avif: "poster.avif", webp: "poster.webp", width: posterSize.width, height: posterSize.height },
+  poster: { avif: "poster.avif", webp: "poster.webp", width: posterSize.width, height: posterSize.height, last: { avif: "last.avif", webp: "last.webp" } },
   variants,
   timing,
 };

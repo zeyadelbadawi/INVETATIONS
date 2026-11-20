@@ -118,13 +118,44 @@ test("no horizontal overflow at 360px", async ({ page }) => {
   }
 });
 
-test("demo vote shows the room's answer", async ({ page }) => {
+test("game answers are real controls and keep their place", async ({ page }) => {
   await page.goto("/en");
-  const him = page.getByRole("button", { name: "Him", exact: true });
-  await him.scrollIntoViewIfNeeded();
-  await him.click();
-  await expect(him).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("The couple says: him.")).toBeVisible();
+  const answer = page.locator('[data-kind="quiz"]').getByRole("button", { name: "At work", exact: true });
+  await answer.focus();
+  // Focus inside the horizontal track scrolls its panel into view.
+  await expect(answer).toBeInViewport();
+  await answer.press("Enter");
+  await expect(answer).toHaveAttribute("aria-pressed", "true");
+  // Every game panel is reachable with the keyboard.
+  const vote = page.getByRole("button", { name: "Omar", exact: true });
+  await vote.focus();
+  await expect(vote).toBeInViewport();
+});
+
+test("the home page lists its three scenes for the player", async ({ page }) => {
+  await page.goto("/en");
+  const data = JSON.parse((await page.locator("#sq-data").textContent()) ?? "{}");
+  expect(data.s.map((s: { k: string }) => s.k.replace(/\.r\d+$/, ""))).toEqual(["wedding.doors", "reveal.box", "corporate.stage"]);
+  // Not gated: the page is never held behind a splash.
+  expect(data.s.every((s: { g: number }) => s.g === 0)).toBe(true);
+  await expect(page.locator("html")).not.toHaveAttribute("data-splash", "hold");
+});
+
+test("reduced motion shows every step and panel without pinning", async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: "reduce", viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto(`${test.info().project.use.baseURL}/en`);
+  await page.waitForTimeout(500);
+  for (const id of ["guests", "games"]) {
+    await expect(page.locator(`#${id} .mo-pin`)).toHaveAttribute("data-still", "");
+  }
+  const steps = page.locator("#guests .mk-seq__text");
+  for (const text of await steps.all()) {
+    await text.scrollIntoViewIfNeeded();
+    await expect(text).toHaveCSS("opacity", "1");
+  }
+  await noHorizontalOverflow(page);
+  await context.close();
 });
 
 test("FAQ answers open", async ({ page }) => {
@@ -148,7 +179,8 @@ test("robots.txt keeps private paths out of search", async ({ request }) => {
 test("pricing shows the launch prices", async ({ page }) => {
   await page.goto("/en/pricing");
   const main = page.locator("main");
-  await expect(main.getByText("350", { exact: true }).first()).toBeVisible();
-  await expect(main.getByText("750", { exact: true }).first()).toBeVisible();
-  await expect(main.getByText("+1,000", { exact: true }).first()).toBeVisible();
+  // The comparison is a table on wide screens and plan sections on phones: check whichever shows.
+  await expect(main.getByText("350", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("750", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(main.getByText("+1,000", { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });

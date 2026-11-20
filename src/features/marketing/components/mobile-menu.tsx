@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { getSmoothScroll } from "@/scenes/motion-libs";
 
 type Props = {
   openLabel: string;
@@ -12,8 +13,11 @@ type Props = {
   children?: ReactNode;
 };
 
-// Disclosure menu for phones: the button toggles a panel under the header.
-// Escape closes it and returns focus to the button; opening moves focus to the first link.
+const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Full-screen menu for phones. The header's button stays on top and toggles it.
+// While open, focus is trapped between that button and the menu, the page
+// behind does not scroll, Escape closes it and focus returns to the button.
 export function MobileMenu({ openLabel, closeLabel, navLabel, links, children }: Props) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -22,26 +26,35 @@ export function MobileMenu({ openLabel, closeLabel, navLabel, links, children }:
 
   useEffect(() => {
     if (!open) return;
-    panel.current?.querySelector<HTMLElement>("a, button")?.focus();
+    panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    const smooth = getSmoothScroll();
+    smooth?.stop();
+
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
         button.current?.focus();
+        return;
       }
-    }
-    function onPointer(event: PointerEvent) {
-      const target = event.target as Node;
-      if (!panel.current?.contains(target) && !button.current?.contains(target)) setOpen(false);
+      if (event.key !== "Tab" || !panel.current || !button.current) return;
+      const items = [button.current, ...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const next = event.shiftKey ? (index <= 0 ? items.length - 1 : index - 1) : index === items.length - 1 ? 0 : index + 1;
+      event.preventDefault();
+      items[next]?.focus();
     }
     const desktop = window.matchMedia("(min-width: 768px)");
     const onWide = () => desktop.matches && setOpen(false);
     document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
     desktop.addEventListener("change", onWide);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
       desktop.removeEventListener("change", onWide);
+      root.style.overflow = previousOverflow;
+      smooth?.start();
     };
   }, [open]);
 
@@ -54,34 +67,25 @@ export function MobileMenu({ openLabel, closeLabel, navLabel, links, children }:
         aria-controls={id}
         aria-label={open ? closeLabel : openLabel}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex size-11 items-center justify-center rounded-full text-paper hover:bg-paper/10 md:hidden"
+        className="mk-menu-button"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 8h16M4 16h16" />}
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 9h16M4 15h16" />}
         </svg>
       </button>
-      <div
-        ref={panel}
-        id={id}
-        hidden={!open}
-        className="mk-menu absolute inset-x-0 top-full border-b border-[var(--mk-ink-line)] bg-ink px-4 pb-6 pt-2 shadow-2xl md:hidden"
-      >
+      <div ref={panel} id={id} hidden={!open} className="mk-menu">
         <nav aria-label={navLabel}>
-          <ul className="flex flex-col">
+          <ul>
             {links.map((link) => (
-              <li key={link.href} className="border-b border-[var(--mk-ink-line)] last:border-0">
-                <Link
-                  href={link.href}
-                  onClick={() => setOpen(false)}
-                  className="flex min-h-13 items-center text-lg font-medium text-paper"
-                >
+              <li key={link.href}>
+                <Link href={link.href} onClick={() => setOpen(false)} className="mk-menu__link">
                   {link.label}
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
-        {children ? <div className="mt-3">{children}</div> : null}
+        {children ? <div className="mk-menu__foot">{children}</div> : null}
       </div>
     </>
   );

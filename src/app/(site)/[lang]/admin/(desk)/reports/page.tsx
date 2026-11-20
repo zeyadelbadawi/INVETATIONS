@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { Badge, Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/card";
 import { isLocale, type Locale } from "@/i18n/config";
 import { adminDb } from "@/lib/supabase/admin";
 import { TakedownButton } from "@/features/admin/components/desk-forms";
@@ -21,13 +21,12 @@ async function Queue({ lang }: { lang: Locale }) {
   const t = adminMessages(lang).reports;
   await staffForPage(lang, ["admin", "support"]);
   const posts = await listReportedPosts(adminDb());
-  if (posts.length === 0) return <Card>{t.none}</Card>;
+  if (posts.length === 0) return <p className="rounded-panel border border-line bg-raised p-6 text-muted">{t.none}</p>;
   const dates = dateFormat(lang);
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="divide-y divide-line rounded-panel border border-line bg-raised">
       {posts.map((post) => (
-        <li key={post.id}>
-          <Card className="flex flex-col gap-3">
+        <li key={post.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge>{t.media[post.kind] ?? post.kind}</Badge>
               {post.reportedCount > 0 ? <Badge tone="danger">{fmt(t.reports, { n: post.reportedCount })}</Badge> : <Badge tone="highlight">{t.pendingLong}</Badge>}
@@ -39,7 +38,6 @@ async function Queue({ lang }: { lang: Locale }) {
             {/* Guest text is rendered as text (security C1). */}
             <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{post.body ?? t.noText}</p>
             <TakedownButton lang={lang} postId={post.id} />
-          </Card>
         </li>
       ))}
     </ul>
@@ -53,7 +51,7 @@ export default async function ReportsPage({ params }: PageProps<"/[lang]/admin/r
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <h1 className="text-2xl font-semibold leading-tight sm:text-[1.75rem]">{t.title}</h1>
         <p className="mt-1 text-muted">{t.lead}</p>
       </div>
       <Suspense fallback={<PageSkeleton label={hostMessages(lang).common.loading} />}>

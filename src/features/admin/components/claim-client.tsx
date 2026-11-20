@@ -4,7 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
-import { Card, Notice } from "@/components/ui/card";
+import { Notice } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
 import { acceptClaimAction, previewClaimAction } from "../claim-actions";
 import type { AdminErrorCode } from "../lib/errors";
@@ -95,7 +95,7 @@ export function ClaimClient({ lang }: { lang: Locale }) {
   }
 
   return (
-    <Card className="flex flex-col gap-4" aria-live="polite">
+    <div className="flex flex-col gap-5" aria-live="polite">
       {state.kind === "checking" ? <p role="status">{c.checking}</p> : null}
       {state.kind === "no_token" ? <Notice tone="danger">{c.noToken}</Notice> : null}
       {state.kind === "error" && state.code === "unauthenticated" ? (
@@ -133,6 +133,6 @@ export function ClaimClient({ lang }: { lang: Locale }) {
           </div>
         </>
       ) : null}
-    </Card>
+    </div>
   );
 }

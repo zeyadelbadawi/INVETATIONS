@@ -58,11 +58,11 @@ export function MfaEnrol({ lang }: { lang: Locale }) {
         <>
           {/* The QR is an SVG data URI returned by the auth server, not customer content. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={factor.qr} alt={t.qrAlt} width={200} height={200} className="rounded-xl border border-line bg-white p-2" />
+          <img src={factor.qr} alt={t.qrAlt} width={200} height={200} className="rounded-control border border-line bg-white p-2" />
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted">{t.secretLabel}</p>
             {showSecret ? (
-              <code dir="ltr" className="break-all rounded-lg bg-surface px-3 py-2 font-mono text-sm">
+              <code dir="ltr" className="break-all rounded-control bg-surface px-3 py-2 font-mono text-sm">
                 {factor.secret}
               </code>
             ) : null}

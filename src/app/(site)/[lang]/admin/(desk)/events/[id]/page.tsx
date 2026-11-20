@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { lang as rootLang } from "next/root-params";
 import { Suspense } from "react";
-import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
+import { Badge, Card, FormSection, Notice } from "@/components/ui/card";
 import { isLocale, type Locale } from "@/i18n/config";
 import { adminDb } from "@/lib/supabase/admin";
 import { ClaimLinkForm, GrantForm, RevokeGrantButton, UnpaidButtons } from "@/features/admin/components/desk-forms";
@@ -36,7 +36,7 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
   const dates = dateFormat(lang);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <Card>
         {/* Customer text is rendered as text, after schema parsing (security C1). */}
         <h2 className="text-xl font-semibold [overflow-wrap:anywhere]">{summary.name}</h2>
@@ -67,14 +67,13 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
         </dl>
       </Card>
 
-      <Card>
-        <SectionHeading title={t.orders} />
+      <FormSection title={t.orders}>
         {summary.orders.length === 0 ? (
           <p className="text-sm text-muted">{t.noOrders}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {summary.orders.map((order) => (
-              <li key={order.id} className="flex flex-col gap-2 border-b border-line pb-3 last:border-0">
+              <li key={order.id} className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <Badge tone={order.status === "paid" ? "success" : order.status === "pending" ? "info" : "highlight"}>{order.status}</Badge>
                   <span className="font-medium">{order.planId}</span>
@@ -86,16 +85,15 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
             ))}
           </ul>
         )}
-      </Card>
+      </FormSection>
 
-      <Card>
-        <SectionHeading title={a.grants.title} lead={a.grants.lead} />
+      <FormSection title={a.grants.title} lead={a.grants.lead}>
         {grants.length === 0 ? (
           <p className="text-sm text-muted">{a.grants.none}</p>
         ) : (
           <ul className="mb-6 flex flex-col gap-3">
             {grants.map((grant) => (
-              <li key={grant.id} className="flex flex-col gap-2 border-b border-line pb-3 last:border-0">
+              <li key={grant.id} className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <Badge tone={grant.status === "active" ? "success" : "info"}>{a.grants.status[grant.status]}</Badge>
                   <bdi dir="ltr" className="font-medium">
@@ -115,10 +113,9 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
         {isAdmin ? (
           <GrantForm lang={lang} eventId={summary.id} staff={grantable.map((s) => ({ id: s.id, label: `${s.email ?? s.id} (${s.role})` }))} />
         ) : null}
-      </Card>
+      </FormSection>
 
-      <Card>
-        <SectionHeading title={a.claims.title} lead={a.claims.lead} />
+      <FormSection title={a.claims.title} lead={a.claims.lead}>
         {summary.claims.length === 0 ? (
           <p className="mb-4 text-sm text-muted">{a.claims.none}</p>
         ) : (
@@ -137,7 +134,7 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
           </ul>
         )}
         {isAdmin ? summary.holding ? <ClaimLinkForm lang={lang} eventId={summary.id} /> : <Notice>{a.claims.onlyHolding}</Notice> : null}
-      </Card>
+      </FormSection>
     </div>
   );
 }
@@ -148,7 +145,7 @@ export default async function EventPage({ params }: Props) {
   const t = adminMessages(lang).events;
   return (
     <div className="flex flex-col gap-4">
-      <Link href={`/${lang}/admin/events` as Route} className="inline-flex min-h-11 items-center text-sm font-medium text-secondary">
+      <Link href={`/${lang}/admin/events` as Route} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-ink">
         {t.back}
       </Link>
       <Suspense fallback={<PageSkeleton label={hostMessages(lang).common.loading} />}>

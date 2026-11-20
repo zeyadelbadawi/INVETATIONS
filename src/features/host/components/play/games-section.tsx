@@ -90,18 +90,18 @@ export function GamesSection({ lang, eventId, games, entitled, isOwner, timezone
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap gap-2">
                       {game.state !== "open" ? (
-                        <Button size="sm" disabled={pending || quizBlocked} onClick={() => act(() => changeGameState(eventId, game.id, "open"), report)}>
+                        <Button size="md" disabled={pending || quizBlocked} onClick={() => act(() => changeGameState(eventId, game.id, "open"), report)}>
                           {g.open}
                           <span className="sr-only"> — {title}</span>
                         </Button>
                       ) : (
-                        <Button size="sm" disabled={pending} onClick={() => act(() => changeGameState(eventId, game.id, "closed"), report)}>
+                        <Button size="md" disabled={pending} onClick={() => act(() => changeGameState(eventId, game.id, "closed"), report)}>
                           {g.close}
                           <span className="sr-only"> — {title}</span>
                         </Button>
                       )}
                       {game.state !== "hidden" ? (
-                        <Button variant="secondary" size="sm" disabled={pending} onClick={() => act(() => changeGameState(eventId, game.id, "hidden"), report)}>
+                        <Button variant="secondary" size="md" disabled={pending} onClick={() => act(() => changeGameState(eventId, game.id, "hidden"), report)}>
                           {g.hide}
                           <span className="sr-only"> — {title}</span>
                         </Button>
@@ -109,7 +109,7 @@ export function GamesSection({ lang, eventId, games, entitled, isOwner, timezone
                       {config ? (
                         <Button
                           variant="secondary"
-                          size="sm"
+                          size="md"
                           aria-expanded={isEditing}
                           disabled={game.answers > 0}
                           onClick={() => setEditing(isEditing ? null : game.id)}
@@ -162,8 +162,8 @@ export function GamesSection({ lang, eventId, games, entitled, isOwner, timezone
                     <div role="alertdialog" aria-label={g.settle} className="flex flex-wrap items-center gap-2">
                       <p className="w-full text-sm">{g.settleConfirm}</p>
                       <Button
-                        variant="danger"
-                        size="sm"
+                        variant="destructive"
+                        size="md"
                         disabled={pending}
                         onClick={() => {
                           setSettling(null);
@@ -175,14 +175,14 @@ export function GamesSection({ lang, eventId, games, entitled, isOwner, timezone
                       >
                         {t.common.confirm}
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setSettling(null)}>
+                      <Button variant="secondary" size="md" onClick={() => setSettling(null)}>
                         {t.common.keep}
                       </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1 border-t border-line pt-3">
                       <div>
-                        <Button variant="secondary" size="sm" disabled={pending || game.state === "open"} onClick={() => setSettling(game.id)}>
+                        <Button variant="secondary" size="md" disabled={pending || game.state === "open"} onClick={() => setSettling(game.id)}>
                           {g.settle}
                           <span className="sr-only"> — {title}</span>
                         </Button>

@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, SectionHeading } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { choiceClass, Input, Select, Textarea } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import { parseGuestLines } from "../lib/bulk";
 import type { InvitationRowInput } from "../lib/invitations";
@@ -27,19 +26,19 @@ function KindPicker({ lang, value, onChange, personalLinks, name }: { lang: Loca
   const t = hostMessages(lang).invitations;
   return (
     <fieldset>
-      <legend className="mb-1.5 text-sm font-medium">{t.kind}</legend>
+      <legend className="mb-2 text-sm font-medium">{t.kind}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {(["personal", "group"] as const).map((kind) => {
           const locked = kind === "personal" && !personalLinks;
           return (
             <label
               key={kind}
-              className={`flex min-h-11 items-start gap-3 rounded-xl border border-line p-3 has-[:checked]:border-secondary ${locked ? "opacity-60" : "cursor-pointer"}`}
+              className={choiceClass}
             >
               <input
                 type="radio"
                 name={name}
-                className="mt-1 size-5 accent-secondary"
+                className="mt-1 size-4 shrink-0 accent-fg"
                 checked={value === kind}
                 disabled={locked}
                 onChange={() => onChange(kind)}
@@ -82,9 +81,7 @@ export function AddInvitationForm({ lang, teams, personalLinks, pending, onAdd }
   }
 
   return (
-    <Card>
-      <SectionHeading title={i.addTitle} />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-5">
         <KindPicker lang={lang} value={kind} onChange={setKind} personalLinks={personalLinks} name="add-kind" />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={i.label} htmlFor="inv-label">
@@ -133,8 +130,7 @@ export function AddInvitationForm({ lang, teams, personalLinks, pending, onAdd }
             {i.addOne}
           </Button>
         </div>
-      </form>
-    </Card>
+    </form>
   );
 }
 
@@ -156,9 +152,7 @@ export function BulkInvitationForm({ lang, personalLinks, pending, onAdd }: Omit
   }
 
   return (
-    <Card>
-      <SectionHeading title={i.bulkTitle} lead={i.bulkLead} />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-4">
         <KindPicker lang={lang} value={kind} onChange={setKind} personalLinks={personalLinks} name="bulk-kind" />
         <div>
           <label htmlFor="bulk-text" className="sr-only">
@@ -192,7 +186,6 @@ export function BulkInvitationForm({ lang, personalLinks, pending, onAdd }: Omit
             {fmt(i.bulkAdd, { n: parsed.rows.length })}
           </Button>
         </div>
-      </form>
-    </Card>
+    </form>
   );
 }

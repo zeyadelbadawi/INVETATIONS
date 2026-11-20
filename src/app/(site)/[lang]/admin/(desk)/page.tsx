@@ -1,7 +1,7 @@
 import type { Metadata, Route } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Card, Notice } from "@/components/ui/card";
+import { Notice } from "@/components/ui/card";
 import { isLocale, type Locale } from "@/i18n/config";
 import { AccessError } from "@/lib/events/access";
 import { adminDb } from "@/lib/supabase/admin";
@@ -42,14 +42,13 @@ async function OrdersQueue({ lang }: { lang: Locale }) {
   }
 
   const orders = await listPendingOrders(adminDb(), staff.userId, lang);
-  if (orders.length === 0) return <Card>{t.empty}</Card>;
+  if (orders.length === 0) return <p className="rounded-panel border border-line bg-raised p-6 text-muted">{t.empty}</p>;
   const dates = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" });
 
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className="divide-y divide-line rounded-panel border border-line bg-raised">
       {orders.map((order) => (
-        <li key={order.id}>
-          <Card className="flex flex-col gap-4">
+        <li key={order.id} className="grid content-start gap-4 p-4 sm:p-6 lg:grid-cols-2 lg:gap-x-8">
             <div>
               {/* Customer text is rendered as text, after schema parsing (security C1). */}
               <h2 className="text-lg font-semibold [overflow-wrap:anywhere]">{order.eventName}</h2>
@@ -57,7 +56,7 @@ async function OrdersQueue({ lang }: { lang: Locale }) {
                 {order.eventSlug}
               </p>
             </div>
-            <dl className="grid gap-3 text-sm sm:grid-cols-3">
+            <dl className="grid gap-x-6 gap-y-3 text-sm tabular-nums sm:grid-cols-3">
               <div>
                 <dt className="text-muted">{t.plan}</dt>
                 <dd className="font-medium">{order.planId}</dd>
@@ -88,6 +87,7 @@ async function OrdersQueue({ lang }: { lang: Locale }) {
                 </ul>
               )}
             </div>
+            <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:border-s lg:border-line lg:ps-8">
             {order.conflicted ? (
               <Notice>{t.conflicted}</Notice>
             ) : staff.role === "admin" ? (
@@ -95,7 +95,7 @@ async function OrdersQueue({ lang }: { lang: Locale }) {
             ) : (
               <Notice>{t.viewOnly}</Notice>
             )}
-          </Card>
+            </div>
         </li>
       ))}
     </ul>
@@ -109,7 +109,7 @@ export default async function AdminPage({ params }: PageProps<"/[lang]/admin">) 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <h1 className="text-2xl font-semibold leading-tight sm:text-[1.75rem]">{t.title}</h1>
         <p className="mt-1 text-muted">{t.lead}</p>
       </div>
       <Suspense fallback={<PageSkeleton label={hostMessages(lang).common.loading} />}>

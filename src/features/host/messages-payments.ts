@@ -10,10 +10,10 @@ const en = {
   cardButton: "Pay {amount} EGP by card",
   cardRedirecting: "Opening the payment page…",
   orTransfer: "Or pay by transfer",
-  confirming: "We're confirming your payment. This page updates on its own — it usually takes less than a minute.",
+  confirming: "We're confirming your payment. This page updates on its own; it usually takes less than a minute.",
   confirmed: "Payment confirmed. Your plan is active.",
   stillWaiting:
-    "We haven't received the confirmation yet. If money left your account, it will be matched shortly — you don't need to pay again. Refresh this page in a few minutes.",
+    "We haven't received the confirmation yet. If money left your account, it will be matched shortly and you don't need to pay again. Refresh this page in a few minutes.",
   errors: {
     card_unavailable: "Card payment isn't available right now. Please pay by transfer.",
     card_failed: "We couldn't open the payment page. Please try again or pay by transfer.",
@@ -32,9 +32,9 @@ const ar: PaymentMessages = {
   cardButton: "ادفع {amount} جنيه بالكارت",
   cardRedirecting: "بنفتح صفحة الدفع…",
   orTransfer: "أو ادفع بالتحويل",
-  confirming: "بنأكد الدفع. الصفحة دي هتتحدث لوحدها — غالبًا في أقل من دقيقة.",
+  confirming: "بنأكد الدفع. الصفحة دي هتتحدث لوحدها، وغالبًا في أقل من دقيقة.",
   confirmed: "الدفع اتأكد. الباقة اشتغلت.",
-  stillWaiting: "لسه ماوصلناش التأكيد. لو الفلوس اتخصمت هتتطابق قريب — مش محتاج تدفع تاني. حدّث الصفحة بعد كام دقيقة.",
+  stillWaiting: "لسه ماوصلناش التأكيد. لو الفلوس اتخصمت هتتطابق قريب، ومش محتاج تدفع تاني. حدّث الصفحة بعد كام دقيقة.",
   errors: {
     card_unavailable: "الدفع بالكارت مش متاح دلوقتي. ادفع بالتحويل لو سمحت.",
     card_failed: "ماقدرناش نفتح صفحة الدفع. جرّب تاني أو ادفع بالتحويل.",

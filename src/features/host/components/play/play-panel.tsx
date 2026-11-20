@@ -57,25 +57,32 @@ export function PlayPanel(props: Props) {
   ];
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-      <div role="group" aria-label={t.tabsLabel} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {tabs.map(({ id, label, count }) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={tab === id}
-            onClick={() => setTab(id)}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium ${
-              tab === id ? "border-fg bg-fg text-raised" : "border-line bg-raised text-fg hover:bg-surface"
-            }`}
-          >
-            {label}
-            {count > 0 ? (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-on-primary">{count}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+    // The live console for the event day: dark, so it can be used in a dim hall,
+    // with targets sized for a thumb.
+    <div className="theme-night -mx-4 -mb-12 -mt-6 flex min-h-[calc(100dvh-3.5rem)] flex-col px-4 pb-16 pt-5 sm:-mx-6 sm:-mt-8 sm:px-6 sm:pt-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+        <div
+          role="group"
+          aria-label={t.tabsLabel}
+          data-control-tabs
+          className="grid gap-1 rounded-panel border border-line bg-raised p-1"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
+          {tabs.map(({ id, label, count }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={tab === id}
+              onClick={() => setTab(id)}
+              className={`flex min-h-12 items-center justify-center gap-1.5 rounded-control px-1.5 text-sm font-medium leading-tight transition-colors duration-150 sm:min-h-14 sm:text-base ${
+                tab === id ? "bg-bone text-night" : "text-ash hover:bg-bone/10 hover:text-bone"
+              }`}
+            >
+              {label}
+              {count > 0 ? <span className={`font-semibold tabular-nums ${tab === id ? "text-night" : "text-lantern"}`}>{count}</span> : null}
+            </button>
+          ))}
+        </div>
 
       {tab === "guests" ? <PlayersSection lang={lang} eventId={eventId} players={props.players} teams={props.teams} /> : null}
       {tab === "wall" ? <WallSection lang={lang} eventId={eventId} posts={props.posts} timezone={timezone} /> : null}
@@ -96,6 +103,7 @@ export function PlayPanel(props: Props) {
           live={props.live}
         />
       ) : null}
+      </div>
     </div>
   );
 }

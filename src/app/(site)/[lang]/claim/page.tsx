@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { isLocale } from "@/i18n/config";
 import { ClaimClient } from "@/features/admin/components/claim-client";
 import { adminMessages } from "@/features/admin/messages";
-import { AppHeader } from "@/features/host/components/app-header";
+import { AuthShell, authSwitchClass } from "@/features/host/components/auth-shell";
+import { LanguageSwitch } from "@/features/host/components/language-switch";
+import { hostMessages } from "@/features/host/messages";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/claim">): Promise<Metadata> {
   const { lang } = await params;
@@ -23,15 +26,17 @@ export default async function ClaimPage({ params }: PageProps<"/[lang]/claim">) 
   if (!isLocale(lang)) notFound();
   const t = adminMessages(lang).claim;
   return (
-    <div className="flex flex-1 flex-col">
-      <AppHeader lang={lang} home="app" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-6">
-        <div>
-          <h1 className="text-2xl font-semibold">{t.title}</h1>
-          <p className="mt-1 text-muted">{t.lead}</p>
-        </div>
-        <ClaimClient lang={lang} />
-      </main>
-    </div>
+    <AuthShell
+      lang={lang}
+      title={t.title}
+      lead={t.lead}
+      languageSwitch={
+        <Suspense fallback={null}>
+          <LanguageSwitch lang={lang} label={hostMessages(lang).common.switchLanguage} className={authSwitchClass} />
+        </Suspense>
+      }
+    >
+      <ClaimClient lang={lang} />
+    </AuthShell>
   );
 }

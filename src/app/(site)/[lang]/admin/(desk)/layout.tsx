@@ -31,7 +31,9 @@ export default async function DeskLayout({ children }: { children: ReactNode }) 
   if (!isLocale(l)) notFound();
   return (
     <>
-      <StaffNav lang={l} />
+      <Suspense fallback={<div className="-mx-4 -mt-6 mb-8 h-12 border-b border-line sm:-mx-6 sm:-mt-8" />}>
+        <StaffNav lang={l} />
+      </Suspense>
       <Suspense fallback={<PageSkeleton label={hostMessages(l).common.loading} />}>
         <StaffGate lang={l}>{children}</StaffGate>
       </Suspense>

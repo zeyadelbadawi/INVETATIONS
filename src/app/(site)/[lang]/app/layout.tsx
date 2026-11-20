@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: LayoutProps<"/[lang]/app">
   return (
     <div className="flex flex-1 flex-col">
       <AppHeader lang={l} home="app" />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-12 pt-6 sm:px-6 sm:pt-8">{children}</main>
     </div>
   );
 }

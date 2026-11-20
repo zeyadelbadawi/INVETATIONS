@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, SectionHeading } from "@/components/ui/card";
+import { SectionHeading } from "@/components/ui/card";
+import { choiceClass } from "@/components/ui/input";
 import type { BlockType, EventContent, EventTheme } from "@/content/schema";
 import type { Locale } from "@/i18n/config";
 import type { Template } from "@/templates/types";
@@ -173,38 +174,47 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
 
   const { content, theme } = draft;
   const palette = theme.palette ?? template.palettes[0]?.id;
+  const statusClass = status === "error" ? "text-danger font-medium" : status === "dirty" ? "text-fg" : "text-muted";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="sticky top-[61px] z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur">
-        <p aria-live="polite" role="status" className={`text-sm ${status === "error" ? "text-danger" : "text-muted"}`}>
+    <div className="flex flex-col gap-6">
+      {/* Save state and the phone switch stay under the top bar while the form scrolls. */}
+      <div className="sticky top-14 z-20 -mx-4 flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:-mx-6 sm:px-6">
+        <p aria-live="polite" role="status" className={`flex items-center gap-2 text-sm transition-colors duration-150 ${statusClass}`}>
+          {status === "saved" ? (
+            <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 text-accent-ink" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m3.5 8.5 3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : null}
           {status === "error" && failure ? errorText(t, failure) : t.editor.status[status]}
         </p>
-        <div className="flex items-center gap-2">
-          <div role="group" aria-label={t.editor.title} className="flex rounded-xl border border-line bg-raised p-0.5 lg:hidden">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div role="group" aria-label={t.editor.title} className="grid flex-1 grid-cols-2 rounded-control border border-line bg-raised p-0.5 lg:hidden">
             {(["form", "preview"] as const).map((p) => (
               <button
                 key={p}
                 type="button"
                 aria-pressed={pane === p}
                 onClick={() => setPane(p)}
-                className={`min-h-10 rounded-lg px-3 text-sm font-medium ${pane === p ? "bg-fg text-raised" : "text-muted"}`}
+                className={`min-h-10 rounded-[4px] px-4 text-sm font-medium transition-colors duration-150 ${
+                  pane === p ? "bg-ink text-paper" : "text-muted hover:text-fg"
+                }`}
               >
                 {t.editor[p]}
               </button>
             ))}
           </div>
-          <Button size="sm" disabled={status === "saved" || status === "saving"} onClick={save}>
+          <Button variant="secondary" size="sm" disabled={status === "saved" || status === "saving"} onClick={save}>
             {status === "saving" ? t.common.saving : t.editor.saveNow}
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <div className={`flex flex-col gap-6 ${pane === "form" ? "" : "hidden lg:flex"}`}>
-          <Card>
-            <SectionHeading title={t.editor.fieldsTitle} lead={t.editor.fieldsLead} />
-            <div className="flex flex-col gap-4">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] xl:gap-14">
+        <div className={`flex min-w-0 flex-col gap-10 ${pane === "form" ? "" : "hidden lg:flex"}`}>
+          <section aria-labelledby="fields-heading">
+            <SectionHeading id="fields-heading" title={t.editor.fieldsTitle} lead={t.editor.fieldsLead} />
+            <div className="flex flex-col gap-6">
               {template.fields.map((field) => (
                 <LocalizedField
                   key={field.key}
@@ -219,29 +229,26 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
                 />
               ))}
             </div>
-          </Card>
+          </section>
 
-          <Card>
+          <section className="border-t border-line pt-8">
             <fieldset>
               <legend className="text-lg font-semibold">{t.editor.paletteTitle}</legend>
               <p className="mb-4 mt-1 text-sm text-muted">{t.editor.paletteLead}</p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-3">
                 {template.palettes.map((p) => (
-                  <label
-                    key={p.id}
-                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-line p-3 has-[:checked]:border-secondary has-[:checked]:ring-2 has-[:checked]:ring-secondary/30 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-secondary"
-                  >
+                  <label key={p.id} className={`${choiceClass} items-center`}>
                     <input
                       type="radio"
                       name="palette"
-                      className="sr-only"
+                      className="size-4 shrink-0 accent-fg"
                       checked={palette === p.id}
                       onChange={() => setTheme({ ...theme, palette: p.id })}
                     />
                     {/* Swatch colours come from the template registry, never from user input. */}
-                    <span aria-hidden="true" className="flex overflow-hidden rounded-lg border border-line">
+                    <span aria-hidden="true" className="flex overflow-hidden rounded-[4px] border border-line">
                       {[p.tokens.paper, p.tokens.accent, p.tokens.ink].map((color) => (
-                        <span key={color} className="block h-8 w-5" style={{ background: color }} />
+                        <span key={color} className="block h-7 w-4" style={{ background: color }} />
                       ))}
                     </span>
                     <span className="text-sm font-medium">{p.name[lang]}</span>
@@ -249,20 +256,22 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
                 ))}
               </div>
             </fieldset>
-          </Card>
+          </section>
 
           <EditorMediaProvider eventId={eventId} lang={lang}>
-            <BlocksPanel
-              blocks={content.blocks}
-              allowed={allowed}
-              lang={lang}
-              timezone={timezone}
-              onChange={(blocks) => setContent({ ...content, blocks })}
-            />
+            <div className="border-t border-line pt-8">
+              <BlocksPanel
+                blocks={content.blocks}
+                allowed={allowed}
+                lang={lang}
+                timezone={timezone}
+                onChange={(blocks) => setContent({ ...content, blocks })}
+              />
+            </div>
 
-            <Card>
-              <SectionHeading title={t.images.previewTitle} lead={t.images.previewLead} />
-              <div className="flex flex-col gap-4">
+            <section aria-labelledby="share-heading" className="border-t border-line pt-8">
+              <SectionHeading id="share-heading" title={t.images.previewTitle} lead={t.images.previewLead} />
+              <div className="flex flex-col gap-6">
                 <LocalizedField
                   id="preview-title"
                   label={t.images.previewHeading}
@@ -287,24 +296,26 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
                   onChange={(image) => setContent({ ...content, preview: { ...content.preview, image } })}
                 />
               </div>
-            </Card>
+            </section>
           </EditorMediaProvider>
         </div>
 
         <aside
           aria-label={t.editor.previewTitle}
-          className={`lg:sticky lg:top-32 lg:self-start ${pane === "preview" ? "" : "hidden lg:block"}`}
+          className={`lg:sticky lg:top-[8.5rem] lg:self-start ${pane === "preview" ? "" : "hidden lg:block"}`}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mx-auto mb-3 flex max-w-[390px] items-center justify-between gap-2">
             <h2 className="text-sm font-medium text-muted">{t.editor.previewTitle}</h2>
-            <div role="group" aria-label={t.editor.previewLanguage} className="flex rounded-xl border border-line bg-raised p-0.5">
+            <div role="group" aria-label={t.editor.previewLanguage} className="flex rounded-control border border-line bg-raised p-0.5">
               {(["ar", "en"] as const).map((locale) => (
                 <button
                   key={locale}
                   type="button"
                   aria-pressed={previewLocale === locale}
                   onClick={() => choosePreviewLocale(locale)}
-                  className={`min-h-10 rounded-lg px-3 text-sm font-medium ${previewLocale === locale ? "bg-fg text-raised" : "text-muted"}`}
+                  className={`min-h-9 rounded-[4px] px-3 text-sm font-medium transition-colors duration-150 ${
+                    previewLocale === locale ? "bg-ink text-paper" : "text-muted hover:text-fg"
+                  }`}
                 >
                   {locale === "ar" ? t.common.arabic : t.common.english}
                 </button>
@@ -320,7 +331,7 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
             src="/preview"
             sandbox="allow-scripts"
             referrerPolicy="no-referrer"
-            className="mx-auto block h-[72vh] max-h-[780px] w-full max-w-[390px] rounded-[2rem] border border-line bg-raised shadow-sm"
+            className="mx-auto block h-[calc(100dvh-14rem)] max-h-[800px] min-h-[520px] w-full max-w-[390px] rounded-[28px] border-[6px] border-ink bg-raised"
           />
         </aside>
       </div>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
+import { Badge, FormSection, Notice } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
@@ -117,6 +117,16 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
 
   const paidPlan = plans.find((plan) => plan.id === paidPlanId) ?? null;
   const canPublish = paidPlanId !== null && missing.length === 0 && (status === "draft" || status === "published");
+  const [copied, setCopied] = useState(false);
+  async function copyAddress() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setMessage({ tone: "danger", text: t.errors.unknown });
+    }
+  }
   const referenceOk = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{3,63}$/.test(reference.trim());
 
   function act<T extends object>(action: () => Promise<ActionResult<T>>, done?: (result: { ok: true } & T) => string | null) {
@@ -132,43 +142,70 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
     });
   }
 
+  const check = (ok: boolean) => (
+    <span aria-hidden="true" className={`mt-0.5 flex size-5 shrink-0 items-center justify-center ${ok ? "text-accent-ink" : "text-danger"}`}>
+      <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={ok ? "m3.5 8.5 3 3 6-7" : "M4.5 4.5l7 7M11.5 4.5l-7 7"} />
+      </svg>
+    </span>
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <div aria-live="polite" className="flex flex-col gap-3">
+    <div className="flex w-full max-w-5xl flex-col gap-10">
+      <div aria-live="polite" className="flex flex-col gap-3 empty:-mb-10">
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         {confirming === "waiting" ? <Notice>{pm.confirming}</Notice> : null}
         {confirming === "late" ? <Notice>{pm.stillWaiting}</Notice> : null}
         {confirming === "done" || (confirming && paidPlanId) ? <Notice tone="success">{pm.confirmed}</Notice> : null}
       </div>
 
-      <Card>
-        <SectionHeading title={p.stepPlan} />
+      <FormSection
+        id="publish-plan"
+        title={p.stepPlan}
+        aside={paidPlanId ? <Badge tone="success">{p.paid}</Badge> : null}
+        bare={!paidPlanId}
+      >
         {paidPlan ? (
-          <Notice tone="success">
-            {p.paid} {fmt(p.planChosen, { plan: paidPlan.name })}
-          </Notice>
+          <p className="flex items-start gap-2 font-medium">
+            {check(true)}
+            {fmt(p.planChosen, { plan: paidPlan.name })}
+          </p>
         ) : paidPlanId ? (
-          <Notice tone="success">{p.paid}</Notice>
+          <p className="flex items-start gap-2 font-medium">
+            {check(true)}
+            {p.paid}
+          </p>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0">
             {plans.map((plan) => {
               const selected = pending?.planId === plan.id;
               return (
-                <li key={plan.id} className={`flex flex-col gap-3 rounded-2xl border p-4 ${selected ? "border-secondary ring-2 ring-secondary/30" : "border-line"}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-semibold">{plan.name}</h3>
-                    {selected ? <Badge tone="success">{p.chosen}</Badge> : null}
+                <li key={plan.id} className={`flex flex-col gap-4 p-5 sm:p-6 sm:[&+&]:border-s sm:[&+&]:border-line ${selected ? "bg-primary/[0.08]" : ""}`}>
+                  <div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="text-lg font-semibold">{plan.name}</h3>
+                      {selected ? <Badge tone="success">{p.chosen}</Badge> : null}
+                    </div>
+                    <p className="mt-1 font-display text-3xl font-bold tabular-nums">{fmt(p.price, { amount: plan.priceEgp })}</p>
                   </div>
-                  <p className="text-2xl font-bold">{fmt(p.price, { amount: plan.priceEgp })}</p>
-                  <ul className="flex flex-1 list-disc flex-col gap-1 ps-5 text-sm text-muted">
-                    <li>{plan.maxGuests === null ? p.features.guestsUnlimited : fmt(p.features.guests, { n: plan.maxGuests })}</li>
-                    <li>{p.features.groupLinks}</li>
+                  <ul className="flex flex-1 flex-col gap-1.5 text-sm">
+                    <li className="flex gap-2">
+                      {check(true)}
+                      {plan.maxGuests === null ? p.features.guestsUnlimited : fmt(p.features.guests, { n: plan.maxGuests })}
+                    </li>
+                    <li className="flex gap-2">
+                      {check(true)}
+                      {p.features.groupLinks}
+                    </li>
                     {plan.features.map((feature) => (
-                      <li key={feature}>{p.features[feature]}</li>
+                      <li key={feature} className="flex gap-2">
+                        {check(true)}
+                        {p.features[feature]}
+                      </li>
                     ))}
                   </ul>
                   <Button
-                    variant={selected ? "secondary" : "primary"}
+                    variant="secondary"
                     disabled={busy || selected}
                     onClick={() => act(() => createOrderAction(eventId, plan.id))}
                   >
@@ -179,14 +216,13 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
             })}
           </ul>
         )}
-      </Card>
+      </FormSection>
 
       {pending && !paidPlanId ? (
-        <Card>
-          <SectionHeading title={p.stepPay} />
+        <FormSection id="publish-pay" title={p.stepPay}>
           {cardAvailable ? (
             <div className="mb-6 flex flex-col gap-3 border-b border-line pb-6">
-              <h3 className="text-xl font-semibold">{pm.cardTitle}</h3>
+              <h3 className="text-lg font-semibold">{pm.cardTitle}</h3>
               <p className="text-sm text-muted">{pm.cardLead}</p>
               <div>
                 <Button disabled={busy || redirecting} aria-busy={redirecting} onClick={payByCard}>
@@ -196,9 +232,9 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
               <p className="text-sm font-medium text-muted">{pm.orTransfer}</p>
             </div>
           ) : null}
-          <h3 className="text-xl font-semibold">{fmt(p.payTitle, { amount: pending.amountEgp })}</h3>
-          <p className="mt-2">{p.payInstructions}</p>
-          <p className="mt-2 text-sm text-muted">{p.payNote}</p>
+          <h3 className="text-lg font-semibold tabular-nums">{fmt(p.payTitle, { amount: pending.amountEgp })}</h3>
+          <p className="mt-2 max-w-prose">{p.payInstructions}</p>
+          <p className="mt-2 max-w-prose text-sm text-muted">{p.payNote}</p>
           {pending.references.length > 0 ? (
             <Notice tone="success" className="mt-4">
               {/* Isolation marks keep the Latin reference readable inside Arabic text. */}
@@ -206,7 +242,7 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
             </Notice>
           ) : null}
           <form
-            className="mt-4 flex flex-col gap-3"
+            className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
               if (!referenceOk || busy) return;
@@ -219,40 +255,48 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
               );
             }}
           >
-            <Field label={p.reference} htmlFor="transfer-reference" hint={p.referenceHint}>
-              <Input
-                id="transfer-reference"
-                dir="ltr"
-                value={reference}
-                maxLength={64}
-                autoComplete="off"
-                aria-describedby="transfer-reference-hint"
-                onChange={(e) => setReference(e.target.value)}
-              />
-            </Field>
-            <div>
+            <div className="min-w-0 flex-1 sm:max-w-sm">
+              <Field label={p.reference} htmlFor="transfer-reference" hint={p.referenceHint}>
+                <Input
+                  id="transfer-reference"
+                  dir="ltr"
+                  value={reference}
+                  maxLength={64}
+                  autoComplete="off"
+                  aria-describedby="transfer-reference-hint"
+                  onChange={(e) => setReference(e.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="sm:mb-7">
               <Button type="submit" disabled={!referenceOk || busy} aria-busy={busy}>
                 {p.submitReference}
               </Button>
             </div>
           </form>
-        </Card>
+        </FormSection>
       ) : null}
 
-      <Card>
-        <SectionHeading title={p.stepPublish} />
+      <FormSection id="publish-go" title={p.stepPublish}>
         <h3 className="text-sm font-medium text-muted">{p.checklistTitle}</h3>
-        <ul className="mt-2 flex flex-col gap-1">
-          <li className={missing.length > 0 ? "text-danger" : ""}>
-            {missing.length > 0 ? fmt(p.missing, { fields: missing.join(lang === "ar" ? "، " : ", ") }) : p.ready}
+        <ul className="mt-2 flex flex-col gap-2">
+          <li className="flex items-start gap-2">
+            {check(missing.length === 0)}
+            <span className={missing.length > 0 ? "text-danger" : ""}>
+              {missing.length > 0 ? fmt(p.missing, { fields: missing.join(lang === "ar" ? "، " : ", ") }) : p.ready}
+            </span>
           </li>
-          {paidPlanId ? null : <li className="text-danger">{p.needPlan}</li>}
-          {status === "postponed" ? <li>{p.postponedNote}</li> : null}
-          {status === "cancelled" ? <li>{p.cancelledNote}</li> : null}
-          {status === "ended" ? <li>{p.endedNote}</li> : null}
+          <li className="flex items-start gap-2">
+            {check(paidPlanId !== null)}
+            <span className={paidPlanId ? "" : "text-danger"}>{paidPlanId ? p.paid : p.needPlan}</span>
+          </li>
+          {status === "postponed" ? <li className="ps-7">{p.postponedNote}</li> : null}
+          {status === "cancelled" ? <li className="ps-7">{p.cancelledNote}</li> : null}
+          {status === "ended" ? <li className="ps-7">{p.endedNote}</li> : null}
         </ul>
-        <div className="mt-4">
+        <div className="mt-6">
           <Button
+            size="lg"
             disabled={!canPublish || busy}
             aria-busy={busy}
             onClick={() => act(() => publishEventAction(eventId), (result) => fmt(p.published, { n: result.version }))}
@@ -261,24 +305,34 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
           </Button>
         </div>
         {version > 0 ? (
-          <div className="mt-4 border-t border-line pt-4">
+          <div className="mt-6 border-t border-line pt-5">
             <p className="text-sm font-medium text-muted">{p.liveAt}</p>
-            <p dir="ltr" className="mt-1 break-all font-medium text-start">
-              {address}
-            </p>
-            <p className="mt-1 text-sm text-muted">{p.liveNote}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <a
+                href={address}
+                target="_blank"
+                rel="noopener noreferrer"
+                dir="ltr"
+                className="break-all font-medium text-accent-ink underline underline-offset-4 hover:text-fg"
+              >
+                {address}
+              </a>
+              <Button variant="secondary" size="sm" onClick={copyAddress}>
+                <span aria-live="polite">{copied ? t.invitations.copied : t.invitations.copy}</span>
+              </Button>
+            </div>
+            <p className="mt-2 text-sm text-muted">{p.liveNote}</p>
           </div>
         ) : null}
-      </Card>
+      </FormSection>
 
       {status === "published" || status === "postponed" ? (
-        <Card>
-          <SectionHeading title={p.lifecycleTitle} />
+        <FormSection id="publish-lifecycle" title={p.lifecycleTitle}>
           {asking ? (
             <div role="alertdialog" aria-label={asking === "postpone" ? p.postpone : p.cancelEvent} className="flex flex-wrap items-center gap-2">
-              <p className="w-full">{asking === "postpone" ? p.postponeConfirm : p.cancelConfirm}</p>
+              <p className="w-full font-medium">{asking === "postpone" ? p.postponeConfirm : p.cancelConfirm}</p>
               <Button
-                variant="danger"
+                variant={asking === "cancel" ? "destructive" : "primary"}
                 size="sm"
                 disabled={busy}
                 onClick={() => {
@@ -305,7 +359,7 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
               </Button>
             </div>
           )}
-        </Card>
+        </FormSection>
       ) : null}
     </div>
   );

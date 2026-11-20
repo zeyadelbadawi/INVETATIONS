@@ -1,4 +1,4 @@
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element -- static product screens, already sized webp */
 import type { CSSProperties } from "react";
 
 export type Shot =
@@ -23,24 +23,16 @@ type Props = {
   className?: string;
   style?: CSSProperties;
   eager?: boolean;
-  sizes?: string;
-  "data-pos"?: "start" | "end";
 };
 
-// A real product screen (from the invitation e2e suite) in a phone bezel.
-export function Phone({ shot, alt, className = "", style, eager = false, sizes = "(min-width: 768px) 272px, 46vw", ...rest }: Props) {
+// A real product screen (from the invitation e2e suite) in a thin phone bezel.
+// The screen sits in its own clipping box so it can slide inside the bezel.
+export function Phone({ shot, alt, className = "", style, eager = false }: Props) {
   return (
-    <div className={`mk-phone ${className}`} style={style} {...rest}>
-      <Image
-        src={`/marketing/${shot}.webp`}
-        alt={alt}
-        width={390}
-        height={844}
-        sizes={sizes}
-        unoptimized
-        loading={eager ? "eager" : "lazy"}
-        fetchPriority={eager ? "high" : undefined}
-      />
+    <div className={`mk-phone ${className}`} style={style}>
+      <div className="mk-phone__screen">
+        <img src={`/marketing/${shot}.webp`} alt={alt} width={390} height={844} loading={eager ? "eager" : "lazy"} decoding="async" />
+      </div>
     </div>
   );
 }

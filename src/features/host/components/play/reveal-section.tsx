@@ -83,8 +83,8 @@ function StylePicker({ lang, eventId, started }: { lang: Locale; eventId: string
         <legend className="sr-only">{s.title}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {state.styles.map((style) => (
-            <label key={style} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line p-3 has-[:checked]:border-secondary has-[:checked]:ring-2 has-[:checked]:ring-secondary/30">
-              <input type="radio" name="reveal-style" className="mt-1 size-5 accent-secondary" checked={state.style === style} onChange={() => choose(style)} />
+            <label key={style} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-control border border-line p-3 has-[:checked]:border-fg ">
+              <input type="radio" name="reveal-style" className="mt-1 size-5 accent-fg" checked={state.style === style} onChange={() => choose(style)} />
               <span className="flex flex-col">
                 <span className="font-medium">{s[style]}</span>
                 <span className="text-sm text-muted">{style === "balloon" ? s.balloonHint : s.scratchHint}</span>
@@ -202,7 +202,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
       <Card className="flex flex-col gap-3 text-center">
         <p className="text-sm font-medium text-muted">{r.revealedTitle}</p>
         {/* Public at this point: the same value every guest's page now shows. */}
-        <p className="text-4xl font-bold text-primary">{(live.answer ?? []).map((a) => r.answers[a]).join(lang === "ar" ? " و" : " & ")}</p>
+        <p className="font-display text-5xl font-bold text-lantern sm:text-6xl">{(live.answer ?? []).map((a) => r.answers[a]).join(lang === "ar" ? " و" : " & ")}</p>
         <Notice>{r.settleReminder}</Notice>
       </Card>
     );
@@ -224,18 +224,18 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
               : r.notSealed}
         </p>
         {link ? (
-          <div className="rounded-xl border border-highlight bg-highlight/15 p-3">
+          <div className="rounded-control border border-primary/50 bg-primary/10 p-3">
             <p className="mb-2 text-sm font-medium">{r.linkOnce}</p>
             <div className="flex flex-wrap gap-2">
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(`${r.whatsappMessage} ${link}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonClass("primary", "sm")}
+                className={buttonClass("primary", "md")}
               >
                 {r.whatsapp}
               </a>
-              <Button variant="secondary" size="sm" onClick={copy}>
+              <Button variant="secondary" size="md" onClick={copy}>
                 <span aria-live="polite">{copied ? r.copied : r.copy}</span>
               </Button>
             </div>
@@ -244,10 +244,10 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
         {asking === "reissue" ? (
           <div role="alertdialog" aria-label={r.reissue} className="flex flex-wrap items-center gap-2">
             <p className="w-full text-sm">{r.reissueConfirm}</p>
-            <Button variant="danger" size="sm" disabled={pending} onClick={issue}>
+            <Button variant="destructive" size="md" disabled={pending} onClick={issue}>
               {t.common.confirm}
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setAsking(null)}>
+            <Button variant="secondary" size="md" onClick={() => setAsking(null)}>
               {t.common.keep}
             </Button>
           </div>
@@ -255,7 +255,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
           <div>
             <Button
               variant={status?.exists ? "secondary" : "primary"}
-              size="sm"
+              size="md"
               disabled={pending || started}
               onClick={() => (status?.exists ? setAsking("reissue") : issue())}
             >
@@ -269,21 +269,21 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
         <Card className="flex flex-col items-center gap-3 text-center">
           <SectionHeading title={r.step3} />
           <p className="text-sm text-muted">{r.countdownTo}</p>
-          <p role="timer" aria-live="off" dir="ltr" className="text-5xl font-bold tabular-nums">
+          <p role="timer" aria-live="off" dir="ltr" className="font-display text-6xl font-bold tabular-nums text-lantern sm:text-8xl">
             {now === null || target === null ? "··:··" : now >= target ? r.releasing : formatCountdown(target - now)}
           </p>
           {asking === "cancel" ? (
             <div role="alertdialog" aria-label={r.cancel} className="flex flex-wrap items-center justify-center gap-2">
               <p className="w-full text-sm">{r.cancelConfirm}</p>
-              <Button variant="danger" size="sm" disabled={pending} onClick={cancel}>
+              <Button variant="destructive" size="md" disabled={pending} onClick={cancel}>
                 {t.common.confirm}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => setAsking(null)}>
+              <Button variant="secondary" size="md" onClick={() => setAsking(null)}>
                 {t.common.keep}
               </Button>
             </div>
           ) : (
-            <Button variant="danger" size="sm" disabled={pending || (now !== null && target !== null && now >= target)} onClick={() => setAsking("cancel")}>
+            <Button variant="danger" size="md" disabled={pending || (now !== null && target !== null && now >= target)} onClick={() => setAsking("cancel")}>
               {r.cancel}
             </Button>
           )}
@@ -295,13 +295,13 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
             <legend className="mb-2 text-sm font-medium">{r.leadLabel}</legend>
             <div className="flex flex-wrap gap-2">
               {LEADS.map((minutes) => (
-                <label key={minutes} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line px-3 has-[:checked]:border-secondary">
-                  <input type="radio" name="lead" className="size-5 accent-secondary" checked={lead === minutes} onChange={() => setLead(minutes)} />
+                <label key={minutes} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-line px-3 has-[:checked]:border-fg">
+                  <input type="radio" name="lead" className="size-5 accent-fg" checked={lead === minutes} onChange={() => setLead(minutes)} />
                   {fmt(r.minutes, { n: minutes })}
                 </label>
               ))}
-              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line px-3 has-[:checked]:border-secondary">
-                <input type="radio" name="lead" className="size-5 accent-secondary" checked={lead === "time"} onChange={() => setLead("time")} />
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-line px-3 has-[:checked]:border-fg">
+                <input type="radio" name="lead" className="size-5 accent-fg" checked={lead === "time"} onChange={() => setLead("time")} />
                 {r.atTime}
               </label>
             </div>
@@ -312,7 +312,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
             ) : null}
           </fieldset>
           {asking === "start" ? (
-            <div role="alertdialog" aria-label={r.start} className="flex flex-col gap-3 rounded-xl border border-danger/40 bg-danger/5 p-3">
+            <div role="alertdialog" aria-label={r.start} className="flex flex-col gap-3 rounded-control border border-danger/40 bg-danger/5 p-3">
               <p className="font-medium">{r.startConfirm}</p>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={pending} onClick={start}>

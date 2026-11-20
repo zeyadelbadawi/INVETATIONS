@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
-import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
+import { Badge, FormSection, Notice } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
 import {
   addInvitationsAction,
@@ -126,44 +126,69 @@ export function InvitationsManager(props: Props) {
     });
   }
 
+  const share = maxGuests === null ? null : Math.min(1, used / Math.max(1, maxGuests));
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <div>
-        <p className="text-muted">{i.lead}</p>
-        <p className="mt-2 font-medium">
-          {maxGuests === null ? fmt(i.seatsUnlimited, { used }) : fmt(i.seats, { used, max: maxGuests })}
-        </p>
-        {!hasPlan && maxGuests !== null ? <p className="text-sm text-muted">{fmt(i.draftNote, { max: maxGuests })}</p> : null}
+    <div className="flex w-full max-w-5xl flex-col gap-10">
+      <div className="flex flex-col gap-3">
+        <p className="max-w-prose text-muted">{i.lead}</p>
+        <div className="max-w-md">
+          <p className="font-medium tabular-nums">
+            {maxGuests === null ? fmt(i.seatsUnlimited, { used }) : fmt(i.seats, { used, max: maxGuests })}
+          </p>
+          {share !== null ? (
+            // The share of the plan's seats already given out; the sentence above carries the numbers.
+            <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
+              <div className={`h-full ${share >= 1 ? "bg-danger" : "bg-primary"}`} style={{ width: `${share * 100}%` }} />
+            </div>
+          ) : null}
+          {!hasPlan && maxGuests !== null ? <p className="mt-2 text-sm text-muted">{fmt(i.draftNote, { max: maxGuests })}</p> : null}
+        </div>
       </div>
 
-      <div aria-live="polite">{message ? <Notice tone={message.tone}>{message.text}</Notice> : null}</div>
+      <div aria-live="polite" className="empty:-mb-10">
+        {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      </div>
 
-      <AddInvitationForm lang={lang} teams={teams} personalLinks={personalLinks} pending={pending} onAdd={add} />
-      <BulkInvitationForm lang={lang} personalLinks={personalLinks} pending={pending} onAdd={add} />
+      <FormSection id="inv-add" title={i.addTitle}>
+        <AddInvitationForm lang={lang} teams={teams} personalLinks={personalLinks} pending={pending} onAdd={add} />
+      </FormSection>
 
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <SectionHeading title={i.listTitle} lead={i.regenerateHint} />
-          {canExport ? (
+      <FormSection id="inv-bulk" title={i.bulkTitle} lead={i.bulkLead}>
+        <BulkInvitationForm lang={lang} personalLinks={personalLinks} pending={pending} onAdd={add} />
+      </FormSection>
+
+      <FormSection
+        id="inv-list"
+        title={
+          <>
+            {i.listTitle} <span className="font-normal text-muted tabular-nums">({invitations.length})</span>
+          </>
+        }
+        lead={i.regenerateHint}
+        aside={
+          canExport && invitations.length > 0 ? (
             <Button variant="secondary" size="sm" disabled={pending} onClick={exportCsv}>
               {i.export}
             </Button>
-          ) : null}
-        </div>
+          ) : null
+        }
+        bare
+      >
         {invitations.length === 0 ? (
-          <p className="text-muted">{i.empty}</p>
+          <p className="p-6 text-muted">{i.empty}</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-line">
+          <ul className="divide-y divide-line">
             {invitations.map((inv) => {
               const link = fresh[inv.id] && !inv.revoked ? fresh[inv.id] : null;
               const url = link ? linkFor(link.code) : null;
               const asking = confirming?.id === inv.id ? confirming.what : null;
               return (
-                <li key={inv.id} className="flex flex-col gap-3 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
+                <li key={inv.id} className={`flex flex-col gap-3 px-4 py-4 sm:px-5 ${url ? "bg-primary/[0.07]" : ""}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <div className="min-w-0 flex-1">
                       <h3 className={`font-semibold [overflow-wrap:anywhere] ${inv.revoked ? "text-muted line-through" : ""}`}>{inv.label}</h3>
-                      <p className="text-sm text-muted">
+                      <p className="text-sm text-muted tabular-nums">
                         {i.kinds[inv.kind]}
                         {inv.kind === "open" ? null : <> · {fmt(i.seatsOf, { n: inv.seats })}</>}
                         {inv.side ? <> · {inv.side}</> : null}
@@ -175,14 +200,16 @@ export function InvitationsManager(props: Props) {
                         ) : null}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {inv.revoked ? <Badge tone="danger">{i.revoked}</Badge> : <Badge tone={inv.opened ? "success" : "info"}>{inv.opened ? i.opened : i.notOpened}</Badge>}
-                    </div>
+                    {inv.revoked ? (
+                      <Badge tone="danger">{i.revoked}</Badge>
+                    ) : (
+                      <Badge tone={inv.opened ? "success" : "info"}>{inv.opened ? i.opened : i.notOpened}</Badge>
+                    )}
                   </div>
 
                   {url && link ? (
-                    <div className="rounded-xl border border-secondary/40 bg-secondary/10 p-3">
-                      <p className="mb-2 text-sm font-medium">{i.linkReady}</p>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium">{i.linkReady}</p>
                       <div className="flex flex-wrap gap-2">
                         <a
                           href={`https://wa.me/${(link.phone ?? "").replace(/^\+/, "")}?text=${encodeURIComponent(`${fmt(i.whatsappMessage, { name: link.label })} ${url}`)}`}
@@ -201,9 +228,9 @@ export function InvitationsManager(props: Props) {
 
                   {inv.revoked ? null : asking ? (
                     <div role="alertdialog" aria-label={asking === "revoke" ? i.revokeConfirm : i.regenerateConfirm} className="flex flex-wrap items-center gap-2">
-                      <p className="w-full text-sm">{asking === "revoke" ? i.revokeConfirm : i.regenerateConfirm}</p>
+                      <p className="w-full text-sm font-medium">{asking === "revoke" ? i.revokeConfirm : i.regenerateConfirm}</p>
                       <Button
-                        variant={asking === "revoke" ? "danger" : "primary"}
+                        variant={asking === "revoke" ? "destructive" : "primary"}
                         size="sm"
                         disabled={pending}
                         onClick={() => (asking === "revoke" ? revoke(inv.id) : regenerate(inv.id))}
@@ -218,12 +245,12 @@ export function InvitationsManager(props: Props) {
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" size="sm" disabled={pending} onClick={() => setConfirming({ id: inv.id, what: "regenerate" })}>
                         {link ? i.regenerate : i.regenerateToSend}
-                        <span className="sr-only"> — {inv.label}</span>
+                        <span className="sr-only">: {inv.label}</span>
                       </Button>
                       {inv.kind === "open" ? null : (
-                        <Button variant="danger" size="sm" disabled={pending} onClick={() => setConfirming({ id: inv.id, what: "revoke" })}>
+                        <Button variant="dangerText" size="sm" disabled={pending} onClick={() => setConfirming({ id: inv.id, what: "revoke" })}>
                           {i.revoke}
-                          <span className="sr-only"> — {inv.label}</span>
+                          <span className="sr-only">: {inv.label}</span>
                         </Button>
                       )}
                     </div>
@@ -233,7 +260,7 @@ export function InvitationsManager(props: Props) {
             })}
           </ul>
         )}
-      </Card>
+      </FormSection>
     </div>
   );
 }

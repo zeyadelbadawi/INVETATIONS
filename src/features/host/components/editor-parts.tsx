@@ -28,14 +28,14 @@ export function LocalizedField({ id, label, value, onChange, max, lang, multilin
   const Control = multiline ? Textarea : Input;
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-1.5 flex w-full items-baseline justify-between gap-2 text-sm font-medium text-fg">
+      <legend className="mb-1 flex items-baseline gap-2 text-[0.9375rem] font-semibold text-fg">
         <span>{label}</span>
-        {required ? <span className="text-xs font-normal text-muted">{t.required}</span> : null}
+        {required ? <span className="text-sm font-normal text-muted">({t.required})</span> : null}
       </legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2">
         {order.map((locale) => (
           <div key={locale} className="flex flex-col gap-1">
-            <label htmlFor={`${id}-${locale}`} className="text-xs text-muted">
+            <label htmlFor={`${id}-${locale}`} className="text-sm text-muted">
               {locale === "ar" ? t.arabic : t.english}
             </label>
             <Control
@@ -64,12 +64,24 @@ export function IconButton({ label, onClick, disabled, children }: { label: stri
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex size-11 items-center justify-center rounded-xl border border-line bg-raised text-lg text-fg hover:bg-surface disabled:opacity-40"
+      className="inline-flex size-11 items-center justify-center rounded-control text-muted transition-colors duration-150 hover:bg-fg/[0.06] hover:text-fg disabled:pointer-events-none disabled:opacity-30 sm:size-9"
     >
-      <span aria-hidden="true">{children}</span>
+      <span aria-hidden="true" className="flex">
+        {children}
+      </span>
     </button>
   );
 }
+
+export function Glyph({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
+export const glyphs = { up: "M8 12.5v-9M4 7.5l4-4 4 4", down: "M8 3.5v9M4 8.5l4 4 4-4", remove: "M4 4l8 8M12 4l-8 8" } as const;
 
 export function move<T>(list: T[], index: number, delta: -1 | 1): T[] {
   const target = index + delta;
@@ -97,29 +109,29 @@ export function ItemList<T extends { id: string }>({ items, onChange, max, make,
     <div className="flex flex-col gap-3">
       <ol className="flex flex-col gap-3">
         {items.map((item, index) => (
-          <li key={item.id} className="rounded-xl border border-line bg-surface p-3">
+          <li key={item.id} className="rounded-control border border-line bg-surface/60 p-3 sm:p-4">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-muted">{fmt(t.editor.item, { n: index + 1 })}</span>
-              <div className="flex gap-1">
+              <span className="text-sm font-medium text-muted tabular-nums">{fmt(t.editor.item, { n: index + 1 })}</span>
+              <div className="flex gap-0.5">
                 <IconButton
                   label={`${t.common.moveUp} — ${fmt(t.editor.item, { n: index + 1 })}`}
                   disabled={index === 0}
                   onClick={() => onChange(move(items, index, -1))}
                 >
-                  ↑
+                  <Glyph d="M8 12.5v-9M4 7.5l4-4 4 4" />
                 </IconButton>
                 <IconButton
                   label={`${t.common.moveDown} — ${fmt(t.editor.item, { n: index + 1 })}`}
                   disabled={index === items.length - 1}
                   onClick={() => onChange(move(items, index, 1))}
                 >
-                  ↓
+                  <Glyph d="M8 3.5v9M4 8.5l4 4 4-4" />
                 </IconButton>
                 <IconButton
                   label={`${t.editor.removeItem} — ${fmt(t.editor.item, { n: index + 1 })}`}
                   onClick={() => onChange(items.filter((other) => other.id !== item.id))}
                 >
-                  ×
+                  <Glyph d="M4 4l8 8M12 4l-8 8" />
                 </IconButton>
               </div>
             </div>

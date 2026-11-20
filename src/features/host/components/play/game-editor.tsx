@@ -55,7 +55,7 @@ export function GameEditor({ lang, eventId, gameId, kind, initial, timezone, pen
   }
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-3">
+    <form onSubmit={save} className="flex flex-col gap-4 rounded-control border border-line bg-surface p-3">
       <LocalizedField id={`g-${gameId}-title`} label={g.gameTitle} value={config.title} max={80} lang={lang} onChange={(title) => setConfig({ ...config, title })} />
       <ol className="flex flex-col gap-3">
         {items.map((item, index) => {
@@ -63,7 +63,7 @@ export function GameEditor({ lang, eventId, gameId, kind, initial, timezone, pen
           const heading = fmt(isClues ? g.clue : g.question, { n: index + 1 });
           const options = item.options;
           return (
-            <li key={item.id} className="flex flex-col gap-3 rounded-xl border border-line bg-raised p-3">
+            <li key={item.id} className="flex flex-col gap-3 rounded-control border border-line bg-raised p-3">
               <div className="flex items-center justify-between gap-2">
                 <h5 className="text-sm font-semibold text-muted">{heading}</h5>
                 <IconButton

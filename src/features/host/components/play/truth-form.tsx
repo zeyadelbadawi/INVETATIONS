@@ -53,7 +53,7 @@ export function TruthForm({ lang, eventId, gameId, kind, inputs, hasTruth, pendi
   const lead = kind === "quiz" ? g.truthLeadQuiz : kind === "vote" ? g.truthLeadVote : g.truthLeadPrediction;
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3">
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-control border border-line bg-surface p-3">
       <div>
         <h4 className="font-semibold">{g.truthTitle}</h4>
         <p className="text-sm text-muted">{lead}</p>

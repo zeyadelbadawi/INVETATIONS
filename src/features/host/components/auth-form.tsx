@@ -32,7 +32,7 @@ export function AuthForm({ mode, lang, next, linkError, googleEnabled }: Props) 
       <div className="flex flex-col gap-4" role="status">
         <h2 className="text-xl font-semibold">{t.checkEmailTitle}</h2>
         <p className="text-muted">{fmt(t.checkEmailBody, { email: state.email ?? "" })}</p>
-        <Link href={`/${lang}/login` as Route} className="font-medium text-secondary underline underline-offset-4">
+        <Link href={`/${lang}/login` as Route} className="font-medium text-accent-ink underline underline-offset-4 hover:text-fg">
           {t.toLogin}
         </Link>
       </div>
@@ -40,8 +40,8 @@ export function AuthForm({ mode, lang, next, linkError, googleEnabled }: Props) 
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <form action={action} className="flex flex-col gap-4" noValidate>
+    <div className="flex flex-col gap-6">
+      <form action={action} className="flex flex-col gap-5" noValidate>
         <input type="hidden" name="lang" value={lang} />
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <Field label={t.email} htmlFor="email">
@@ -79,7 +79,7 @@ export function AuthForm({ mode, lang, next, linkError, googleEnabled }: Props) 
             </Notice>
           ) : null}
         </div>
-        <Button type="submit" disabled={pending} aria-busy={pending}>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={pending} aria-busy={pending}>
           {mode === "login" ? t.signIn : t.signUp}
         </Button>
       </form>
@@ -103,7 +103,7 @@ export function AuthForm({ mode, lang, next, linkError, googleEnabled }: Props) 
 
       <p className="text-sm text-muted">
         {mode === "login" ? t.noAccount : t.haveAccount}{" "}
-        <Link href={otherHref} className="font-medium text-secondary underline underline-offset-4">
+        <Link href={otherHref} className="font-medium text-accent-ink underline underline-offset-4 hover:text-fg">
           {mode === "login" ? t.toSignup : t.toLogin}
         </Link>
       </p>

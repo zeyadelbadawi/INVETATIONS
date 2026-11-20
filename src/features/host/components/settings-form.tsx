@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, Notice, SectionHeading } from "@/components/ui/card";
+import { FormSection, Notice } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Checkbox, Input, Select } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
@@ -66,10 +66,9 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <Card>
-        <SectionHeading title={s.whenTitle} />
-        <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={submit} className="flex w-full max-w-5xl flex-col gap-10">
+      <FormSection id="settings-when" title={s.whenTitle}>
+        <div className="grid gap-5 sm:grid-cols-2">
           <Field label={s.startsAt} htmlFor="starts-at">
             <Input id="starts-at" type="datetime-local" dir="ltr" value={values.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
           </Field>
@@ -101,16 +100,15 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
             </Select>
           </Field>
         </div>
-      </Card>
+      </FormSection>
 
-      <Card>
-        <SectionHeading title={s.guestsTitle} />
-        <div className="flex flex-col divide-y divide-line">
+      <FormSection id="settings-guests" title={s.guestsTitle}>
+        <div className="-my-3 flex flex-col divide-y divide-line">
           {TOGGLES.map((key) => (
             <Checkbox key={key} label={s[key]} hint={hints[key]} checked={values[key]} onChange={(e) => set(key, e.target.checked)} />
           ))}
         </div>
-        <div className="mt-4">
+        <div className="mt-5 border-t border-line pt-5">
           <Field label={s.rsvpDeadline} htmlFor="rsvp-deadline" hint={s.rsvpDeadlineHint} badge={t.common.optional}>
             <Input
               id="rsvp-deadline"
@@ -122,18 +120,17 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
             />
           </Field>
         </div>
-      </Card>
+      </FormSection>
 
-      <Card>
-        <SectionHeading title={s.passcodeTitle} lead={s.passcodeLead} />
+      <FormSection id="settings-passcode" title={s.passcodeTitle} lead={s.passcodeLead}>
         <fieldset className="flex flex-col">
-          <legend className="mb-2 text-sm font-medium">{hasPasscode ? s.passcodeOn : s.passcodeOff}</legend>
+          <legend className="mb-1 text-sm font-medium">{hasPasscode ? s.passcodeOn : s.passcodeOff}</legend>
           {(hasPasscode ? (["keep", "set", "clear"] as const) : (["keep", "set"] as const)).map((mode) => (
             <label key={mode} className="flex min-h-11 cursor-pointer items-center gap-3">
               <input
                 type="radio"
                 name="passcode-mode"
-                className="size-5 accent-secondary"
+                className="size-5 accent-fg"
                 checked={passcodeMode === mode}
                 onChange={() => setPasscodeMode(mode)}
               />
@@ -160,9 +157,9 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
             </Field>
           </div>
         ) : null}
-      </Card>
+      </FormSection>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-line bg-surface px-4 py-3 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:ps-[calc(15rem+2.5rem)] xl:ps-[calc(17rem+2.5rem)]">
         <Button type="submit" disabled={pending || endsBeforeStart || passcodeShort} aria-busy={pending}>
           {pending ? t.common.saving : t.common.save}
         </Button>

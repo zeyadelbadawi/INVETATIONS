@@ -39,7 +39,7 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
             <p className="font-semibold [overflow-wrap:anywhere]">{player.name}</p>
             {player.invitation ? <p className="text-sm text-muted [overflow-wrap:anywhere]">{fmt(p.via, { label: player.invitation })}</p> : null}
           </div>
-          <Badge tone={player.approved ? "success" : "highlight"}>{player.approved ? p.approvedBadge : p.waitingBadge}</Badge>
+          <Badge tone={player.approved ? "info" : "highlight"}>{player.approved ? p.approvedBadge : p.waitingBadge}</Badge>
         </div>
 
         {isRenaming ? (
@@ -66,10 +66,10 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
                 onChange={(e) => setRenaming({ id: player.id, name: e.target.value })}
               />
             </div>
-            <Button type="submit" size="sm" disabled={pending || renaming.name.trim().length < 2}>
+            <Button type="submit" size="md" disabled={pending || renaming.name.trim().length < 2}>
               {p.saveName}
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setRenaming(null)}>
+            <Button variant="secondary" size="md" onClick={() => setRenaming(null)}>
               {t.common.cancel}
             </Button>
           </form>
@@ -77,8 +77,8 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
           <div role="alertdialog" aria-label={p.remove} className="flex flex-wrap items-center gap-2">
             <p className="w-full text-sm">{fmt(p.removeConfirm, { name: player.name })}</p>
             <Button
-              variant="danger"
-              size="sm"
+              variant="destructive"
+              size="md"
               disabled={pending}
               onClick={() => {
                 setRemoving(null);
@@ -87,7 +87,7 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
             >
               {t.common.confirm}
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setRemoving(null)}>
+            <Button variant="secondary" size="md" onClick={() => setRemoving(null)}>
               {t.common.keep}
             </Button>
           </div>
@@ -95,18 +95,18 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
           <div className="flex flex-wrap gap-2">
             <Button
               variant={player.approved ? "secondary" : "primary"}
-              size="sm"
+              size="md"
               disabled={pending}
               onClick={() => act(() => approvePlayer(eventId, player.id, !player.approved), failedIfFalse)}
             >
               {player.approved ? p.unapprove : p.approve}
               <span className="sr-only"> — {player.name}</span>
             </Button>
-            <Button variant="secondary" size="sm" disabled={pending} onClick={() => setRenaming({ id: player.id, name: player.name })}>
+            <Button variant="secondary" size="md" disabled={pending} onClick={() => setRenaming({ id: player.id, name: player.name })}>
               {p.rename}
               <span className="sr-only"> — {player.name}</span>
             </Button>
-            <Button variant="danger" size="sm" disabled={pending} onClick={() => setRemoving(player.id)}>
+            <Button variant="dangerText" size="md" disabled={pending} onClick={() => setRemoving(player.id)}>
               {p.remove}
               <span className="sr-only"> — {player.name}</span>
             </Button>
@@ -120,7 +120,7 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
     <div className="flex flex-col gap-4">
       <ActNotice message={message} />
       {waiting.length > 0 ? (
-        <Card className="border-highlight">
+        <Card className="border-fg/25">
           <SectionHeading title={fmt(p.waiting, { n: waiting.length })} />
           <ul className="flex flex-col divide-y divide-line">{waiting.map(row)}</ul>
         </Card>

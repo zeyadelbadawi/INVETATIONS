@@ -116,7 +116,7 @@ export function DressCodeForm({ block, onChange, lang }: BlockFormProps<"dress_c
                 aria-label={fmt(t.editor.f.color, { n: index + 1 })}
                 value={color.toLowerCase()}
                 onChange={(e) => onChange({ ...block, colors: block.colors.map((c, i) => (i === index ? e.target.value : c)) })}
-                className="size-11 cursor-pointer rounded-xl border border-line bg-raised p-1"
+                className="size-11 cursor-pointer rounded-control border border-line bg-raised p-1"
               />
               <IconButton
                 label={`${t.common.remove} — ${fmt(t.editor.f.color, { n: index + 1 })}`}

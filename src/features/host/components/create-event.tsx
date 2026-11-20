@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, Notice } from "@/components/ui/card";
+import { Notice } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { choiceClass, Input } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import type { EventKind } from "@/templates/types";
 import { createEventAction } from "../actions/events";
@@ -23,9 +23,25 @@ export type TemplateChoice = {
 
 const KINDS: EventKind[] = ["wedding", "gender_reveal", "corporate"];
 
-const choiceClass =
-  "flex min-h-16 cursor-pointer flex-col justify-center gap-1 rounded-2xl border border-line bg-raised p-4 " +
-  "has-[:checked]:border-secondary has-[:checked]:ring-2 has-[:checked]:ring-secondary/30 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-secondary";
+// One numbered step of the form: the number sits in the margin, the question is the legend.
+function Step({ n, total, lang, title, children }: { n: number; total: number; lang: Locale; title: string; children: React.ReactNode }) {
+  const t = hostMessages(lang);
+  const digit = n.toLocaleString(lang === "ar" ? "ar-EG" : "en");
+  return (
+    <fieldset>
+      <legend className="flex items-baseline gap-3 text-lg font-semibold text-fg sm:gap-4">
+        <span aria-hidden="true" className="w-6 font-display text-xl font-bold text-accent-ink sm:w-10 sm:text-2xl">
+          {digit}
+        </span>
+        <span>
+          <span className="sr-only">{fmt(t.create.step, { n: digit, total })}: </span>
+          {title}
+        </span>
+      </legend>
+      <div className="mt-3 sm:ps-14">{children}</div>
+    </fieldset>
+  );
+}
 
 export function CreateEvent({ lang, templates }: { lang: Locale; templates: TemplateChoice[] }) {
   const t = hostMessages(lang);
@@ -57,79 +73,78 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-6">
-      <fieldset>
-        <legend className="mb-3 text-lg font-semibold">
-          <span className="block text-sm font-normal text-muted">{fmt(t.create.step, { n: lang === "ar" ? "١" : 1 })}</span>
-          {t.create.stepKind}
-        </legend>
-        <div className="grid gap-3 sm:grid-cols-3">
+    <form onSubmit={submit} className="flex flex-col gap-10">
+      <Step n={1} total={3} lang={lang} title={t.create.stepKind}>
+        <div className="grid gap-2 sm:grid-cols-3">
           {KINDS.map((k) => (
             <label key={k} className={choiceClass}>
-              <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => chooseKind(k)} className="sr-only" />
-              <span className="font-semibold">{t.kinds[k]}</span>
-              <span className="text-sm text-muted">{t.kindHints[k]}</span>
+              <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => chooseKind(k)} className="mt-1 size-4 shrink-0 accent-fg" />
+              <span className="flex flex-col gap-0.5">
+                <span className="font-semibold">{t.kinds[k]}</span>
+                <span className="text-sm text-muted">{t.kindHints[k]}</span>
+              </span>
             </label>
           ))}
         </div>
-      </fieldset>
+      </Step>
 
       {kind ? (
-        <fieldset>
-          <legend className="mb-3 text-lg font-semibold">
-            <span className="block text-sm font-normal text-muted">{fmt(t.create.step, { n: lang === "ar" ? "٢" : 2 })}</span>
-            {t.create.stepTemplate}
-          </legend>
+        <Step n={2} total={3} lang={lang} title={t.create.stepTemplate}>
           <div className="grid gap-3 sm:grid-cols-2">
             {options.map((tpl) => (
-              <label key={tpl.id} className={choiceClass}>
-                <input
-                  type="radio"
-                  name="template"
-                  value={tpl.id}
-                  checked={templateId === tpl.id}
-                  onChange={() => setTemplateId(tpl.id)}
-                  className="sr-only"
-                />
+              <label key={tpl.id} className={`${choiceClass} flex-col items-stretch gap-3`}>
                 <span
                   aria-hidden="true"
-                  className="mb-2 flex h-20 items-center justify-center rounded-xl border border-line text-lg font-semibold"
+                  className="flex h-28 items-center justify-center rounded-control text-xl font-semibold"
                   style={{ background: tpl.swatch.paper, color: tpl.swatch.ink }}
                 >
                   <span className="border-b-2 pb-1" style={{ borderColor: tpl.swatch.accent }}>
                     {tpl.name}
                   </span>
                 </span>
-                <span className="font-semibold">{tpl.name}</span>
-                <span className="text-sm text-muted">{tpl.description}</span>
+                <span className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="template"
+                    value={tpl.id}
+                    checked={templateId === tpl.id}
+                    onChange={() => setTemplateId(tpl.id)}
+                    className="mt-1 size-4 shrink-0 accent-fg"
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-semibold">{tpl.name}</span>
+                    <span className="text-sm text-muted">{tpl.description}</span>
+                  </span>
+                </span>
               </label>
             ))}
           </div>
-        </fieldset>
+        </Step>
       ) : null}
 
       {kind && templateId ? (
-        <Card>
-          <p className="text-sm text-muted">{fmt(t.create.step, { n: lang === "ar" ? "٣" : 3 })}</p>
-          <h2 className="mb-3 text-lg font-semibold">{t.create.stepName}</h2>
-          <Field label={t.create.nameLabel} htmlFor="event-name" hint={t.create.nameHint}>
-            <Input
-              id="event-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={80}
-              required
-              placeholder={t.create.namePlaceholder}
-              aria-describedby="event-name-hint"
-              autoComplete="off"
-            />
-          </Field>
-        </Card>
+        <Step n={3} total={3} lang={lang} title={t.create.stepName}>
+          <div className="max-w-md">
+            <Field label={t.create.nameLabel} htmlFor="event-name" hint={t.create.nameHint}>
+              <Input
+                id="event-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
+                required
+                placeholder={t.create.namePlaceholder}
+                aria-describedby="event-name-hint"
+                autoComplete="off"
+              />
+            </Field>
+          </div>
+        </Step>
       ) : null}
 
-      <div aria-live="polite">{error ? <Notice tone="danger">{errorText(t, error)}</Notice> : null}</div>
-
-      <div>
+      <div className="flex flex-col items-start gap-4 sm:ps-14">
+        <div aria-live="polite" className="w-full max-w-xl">
+          {error ? <Notice tone="danger">{errorText(t, error)}</Notice> : null}
+        </div>
         <Button type="submit" disabled={!ready || pending} aria-busy={pending}>
           {pending ? t.create.creating : t.create.submit}
         </Button>

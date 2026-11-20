@@ -33,7 +33,7 @@ function OnceLink({ lang, url }: { lang: Locale; url: string }) {
   return (
     <Notice tone="success">
       <p className="mb-2">{t.linkOnce}</p>
-      <code dir="ltr" className="block break-all rounded-lg bg-surface px-3 py-2 font-mono text-sm text-fg">
+      <code dir="ltr" className="block break-all rounded-control bg-surface px-3 py-2 font-mono text-sm text-fg">
         {url}
       </code>
       <Button
@@ -242,7 +242,7 @@ export function OnBehalfForm({ lang, templates, kinds }: { lang: Locale; templat
       {created ? (
         <>
           <OnceLink lang={lang} url={created.claimUrl} />
-          <Link href={`/${lang}/admin/events/${created.eventId}` as Route} className="inline-flex min-h-11 items-center font-medium text-secondary">
+          <Link href={`/${lang}/admin/events/${created.eventId}` as Route} className="inline-flex min-h-11 items-center font-medium text-accent-ink">
             {t.openEvent}
           </Link>
         </>
@@ -262,7 +262,7 @@ export function UnpaidButtons({ lang, orderId }: { lang: Locale; orderId: string
         <div role="alertdialog" aria-label={asking === "refunded" ? t.refund : t.dispute} className="flex flex-wrap items-center gap-2">
           <p className="w-full text-sm">{t.refundConfirm}</p>
           <Button
-            variant="danger"
+            variant="destructive"
             size="sm"
             disabled={pending}
             onClick={() => {
@@ -304,7 +304,7 @@ export function TakedownButton({ lang, postId }: { lang: Locale; postId: string 
         <div role="alertdialog" aria-label={t.takedown} className="flex flex-wrap items-center gap-2">
           <p className="w-full text-sm">{t.confirm}</p>
           <Button
-            variant="danger"
+            variant="destructive"
             size="sm"
             disabled={pending}
             onClick={() => {

@@ -220,7 +220,7 @@ export function ImageField({ label, value, alt, onChange }: { label: string; val
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="block size-20 overflow-hidden rounded-xl border border-line bg-surface">
+        <span className="block size-20 overflow-hidden rounded-control border border-line bg-surface">
           {value ? <Thumb id={value} alt={alt} urls={media.urls} /> : null}
         </span>
         <div className="flex flex-wrap gap-2">
@@ -280,8 +280,8 @@ export function GalleryEditor({ images, max, onChange }: { images: string[]; max
           {images.map((id, index) => {
             const n = index + 1;
             return (
-              <li key={id} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-2">
-                <span className="block aspect-square overflow-hidden rounded-lg bg-raised">
+              <li key={id} className="flex flex-col gap-2 rounded-control border border-line bg-surface p-2">
+                <span className="block aspect-square overflow-hidden rounded-control bg-raised">
                   <Thumb id={id} alt={fmt(i.photo, { n })} urls={media.urls} />
                 </span>
                 <div className="flex justify-between gap-1">

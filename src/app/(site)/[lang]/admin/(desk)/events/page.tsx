@@ -2,7 +2,8 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { Badge, Card, SectionHeading } from "@/components/ui/card";
+import { Badge, FormSection } from "@/components/ui/card";
+import { controlClass } from "@/components/ui/input";
 import { buttonClass } from "@/components/ui/button";
 import { isLocale, type Locale } from "@/i18n/config";
 import { adminDb } from "@/lib/supabase/admin";
@@ -32,18 +33,17 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
   const unique = [...new Map(templates.map((tpl) => [tpl.id, tpl])).values()];
 
   let body = null;
-  if (q.length > 0 && q.length < 3) body = <Card>{t.tooShort}</Card>;
+  if (q.length > 0 && q.length < 3) body = <p className="text-muted">{t.tooShort}</p>;
   else if (q.length >= 3) {
     const hits = await searchEvents(adminDb(), q, staff.role);
     const dates = dateFormat(lang);
     body =
       hits.length === 0 ? (
-        <Card>{t.noResults}</Card>
+        <p className="rounded-panel border border-line bg-raised p-6 text-muted">{t.noResults}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="divide-y divide-line rounded-panel border border-line bg-raised">
           {hits.map((hit) => (
-            <li key={hit.id}>
-              <Card className="flex flex-wrap items-center justify-between gap-3">
+            <li key={hit.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
                 <div className="min-w-0">
                   <p dir="ltr" className="font-mono font-medium text-start [overflow-wrap:anywhere]">
                     {hit.slug}
@@ -52,7 +52,7 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
                     {host.kinds[hit.kind as keyof typeof host.kinds] ?? hit.kind} · {dates.format(new Date(hit.createdAt))} ·{" "}
                     {hit.holding ? t.holding : <bdi dir="ltr">{hit.ownerEmail}</bdi>}
                   </p>
-                  <div className="mt-1 flex flex-wrap gap-2">
+                  <div className="mt-1 flex flex-wrap gap-x-4">
                     <Badge>{host.statuses[hit.status as keyof typeof host.statuses] ?? hit.status}</Badge>
                     <Badge tone={hit.planId ? "success" : "info"}>{hit.planId ?? t.noPlan}</Badge>
                   </div>
@@ -60,7 +60,6 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
                 <Link href={`/${lang}/admin/events/${hit.id}` as Route} className={buttonClass("secondary", "sm")}>
                   {t.open}
                 </Link>
-              </Card>
             </li>
           ))}
         </ul>
@@ -69,7 +68,7 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
 
   return (
     <div className="flex flex-col gap-6">
-      <form method="get" role="search" className="flex flex-wrap items-end gap-2">
+      <form method="get" role="search" className="flex max-w-2xl flex-wrap items-end gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <label htmlFor="event-q" className="text-sm font-medium">
             {t.query}
@@ -81,7 +80,7 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
             defaultValue={q}
             maxLength={320}
             autoComplete="off"
-            className="block min-h-11 w-full rounded-xl border border-line bg-raised px-3 py-2 text-base text-fg"
+            className={controlClass}
           />
         </div>
         <button type="submit" className={buttonClass("primary")}>
@@ -90,10 +89,11 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
       </form>
       {body}
       {staff.role === "admin" ? (
-        <Card>
-          <SectionHeading title={t.onBehalfTitle} lead={t.onBehalfLead} />
+        <div className="mt-4 border-t border-line pt-10">
+          <FormSection id="on-behalf" title={t.onBehalfTitle} lead={t.onBehalfLead}>
           <OnBehalfForm lang={lang} templates={unique} kinds={host.kinds} />
-        </Card>
+          </FormSection>
+        </div>
       ) : null}
     </div>
   );
@@ -106,7 +106,7 @@ export default async function EventsPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <h1 className="text-2xl font-semibold leading-tight sm:text-[1.75rem]">{t.title}</h1>
         <p className="mt-1 text-muted">{t.lead}</p>
       </div>
       <Suspense fallback={<PageSkeleton label={hostMessages(lang).common.loading} />}>

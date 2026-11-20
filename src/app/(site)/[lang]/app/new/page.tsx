@@ -1,8 +1,8 @@
-import type { Metadata, Route } from "next";
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { listTemplates } from "@/templates/registry";
+import { BackLink } from "@/features/host/components/back-link";
 import { CreateEvent, type TemplateChoice } from "@/features/host/components/create-event";
 import { hostMessages } from "@/features/host/messages";
 
@@ -29,12 +29,10 @@ export default async function NewEventPage({ params }: PageProps<"/[lang]/app/ne
     },
   }));
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <div>
-        <Link href={`/${lang}/app` as Route} className="inline-flex min-h-11 items-center text-sm font-medium text-secondary">
-          {t.nav.allEvents}
-        </Link>
-        <h1 className="text-2xl font-semibold">{t.create.title}</h1>
+        <BackLink href={`/${lang}/app`}>{t.nav.allEvents}</BackLink>
+        <h1 className="mt-1 text-2xl font-semibold sm:text-[1.75rem]">{t.create.title}</h1>
       </div>
       <CreateEvent lang={lang} templates={templates} />
     </div>

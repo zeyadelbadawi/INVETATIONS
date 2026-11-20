@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge, SectionHeading } from "@/components/ui/card";
+import { SectionHeading } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { GUEST_ONLY_BLOCKS, type Block, type BlockType } from "@/content/schema";
 import type { Locale } from "@/i18n/config";
 import { newBlock } from "@/templates/registry";
 import { hostMessages } from "../messages";
 import { BlockForm } from "./blocks";
-import { IconButton, move } from "./editor-parts";
+import { Glyph, glyphs, IconButton, move } from "./editor-parts";
 
 type Props = {
   blocks: Block[];
@@ -38,74 +38,70 @@ export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props
   return (
     <section aria-labelledby="blocks-heading">
       <SectionHeading id="blocks-heading" title={t.editor.blocksTitle} lead={t.editor.blocksLead} />
-      <ol className="flex flex-col gap-3">
+      <ol className="divide-y divide-line overflow-hidden rounded-panel border border-line bg-raised">
         {blocks.map((block, index) => {
           const name = t.editor.blocks[block.type];
           const expanded = open === block.id;
           const panelId = `block-panel-${block.id}`;
+          const guestOnly = GUEST_ONLY_BLOCKS.has(block.type);
           return (
-            <li key={block.id} className={`rounded-2xl border bg-raised ${expanded ? "border-secondary" : "border-line"}`}>
-              <div className="flex flex-wrap items-center gap-2 p-3">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                  <h3 className={`text-base font-semibold ${block.enabled ? "" : "text-muted"}`}>{name}</h3>
-                  {GUEST_ONLY_BLOCKS.has(block.type) ? (
-                    <span title={t.editor.guestOnlyHint}>
-                      <Badge tone="highlight">{t.editor.guestOnly}</Badge>
-                    </span>
-                  ) : null}
-                  {block.enabled ? null : <Badge>{t.editor.hidden}</Badge>}
-                </div>
-                <div className="flex items-center gap-1">
-                  <IconButton label={`${t.common.moveUp} — ${name}`} disabled={index === 0} onClick={() => onChange(move(blocks, index, -1))}>
-                    ↑
-                  </IconButton>
-                  <IconButton
-                    label={`${t.common.moveDown} — ${name}`}
-                    disabled={index === blocks.length - 1}
-                    onClick={() => onChange(move(blocks, index, 1))}
-                  >
-                    ↓
-                  </IconButton>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-1">
-                <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+            <li key={block.id}>
+              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 sm:px-4 ${expanded ? "bg-surface/70" : ""}`}>
+                <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
-                    className="size-5 accent-secondary"
+                    className="size-5 shrink-0 accent-fg"
                     checked={block.enabled}
                     onChange={(e) => onChange(blocks.map((b) => (b.id === block.id ? { ...b, enabled: e.target.checked } : b)))}
                   />
-                  <span>
-                    {t.editor.show}
-                    <span className="sr-only"> — {name}</span>
+                  <span className="min-w-0">
+                    <span className="sr-only">{t.editor.show}: </span>
+                    <span className={`block font-semibold ${block.enabled ? "text-fg" : "text-muted"}`}>{name}</span>
+                    <span className="block text-sm text-muted">
+                      {block.enabled ? null : t.editor.hidden}
+                      {block.enabled || !guestOnly ? null : " · "}
+                      {guestOnly ? <span title={t.editor.guestOnlyHint}>{t.editor.guestOnly}</span> : null}
+                    </span>
                   </span>
                 </label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-expanded={expanded}
-                  aria-controls={panelId}
-                  onClick={() => setOpen(expanded ? null : block.id)}
-                >
-                  {expanded ? t.editor.closeSection : t.editor.editSection}
-                  <span className="sr-only"> — {name}</span>
-                </Button>
+                <div className="flex items-center gap-0.5">
+                  <IconButton label={`${t.common.moveUp}: ${name}`} disabled={index === 0} onClick={() => onChange(move(blocks, index, -1))}>
+                    <Glyph d={glyphs.up} />
+                  </IconButton>
+                  <IconButton
+                    label={`${t.common.moveDown}: ${name}`}
+                    disabled={index === blocks.length - 1}
+                    onClick={() => onChange(move(blocks, index, 1))}
+                  >
+                    <Glyph d={glyphs.down} />
+                  </IconButton>
+                  <Button
+                    variant={expanded ? "ghost" : "secondary"}
+                    size="sm"
+                    className="ms-1 min-w-24"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={() => setOpen(expanded ? null : block.id)}
+                  >
+                    {expanded ? t.editor.closeSection : t.editor.editSection}
+                    <span className="sr-only">: {name}</span>
+                  </Button>
+                </div>
               </div>
               {expanded ? (
-                <div id={panelId} className="flex flex-col gap-4 border-t border-line p-3">
+                <div id={panelId} className="flex flex-col gap-5 border-t border-line bg-surface/40 px-3 pb-4 pt-5 sm:px-4">
                   <BlockForm
                     block={block}
                     lang={lang}
                     timezone={timezone}
                     onChange={(next) => onChange(blocks.map((b) => (b.id === block.id ? next : b)))}
                   />
-                  <div className="border-t border-line pt-3">
+                  <div className="border-t border-line pt-4">
                     {removing === block.id ? (
                       <div role="alertdialog" aria-label={t.editor.removeConfirm} className="flex flex-wrap items-center gap-2">
-                        <p className="w-full text-sm">{t.editor.removeConfirm}</p>
+                        <p className="w-full text-sm font-medium">{t.editor.removeConfirm}</p>
                         <Button
-                          variant="danger"
+                          variant="destructive"
                           size="sm"
                           onClick={() => {
                             onChange(blocks.filter((b) => b.id !== block.id));
@@ -135,7 +131,7 @@ export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props
       <div className="mt-4 flex flex-wrap items-end gap-2">
         {available.length > 0 ? (
           <>
-            <div className="min-w-48 flex-1">
+            <div className="min-w-48 flex-1 sm:max-w-sm">
               <label htmlFor="add-block" className="mb-1.5 block text-sm font-medium">
                 {t.editor.addBlock}
               </label>

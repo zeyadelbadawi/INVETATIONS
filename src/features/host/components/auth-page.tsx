@@ -2,13 +2,12 @@ import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Card } from "@/components/ui/card";
-import { brand } from "@/config/brand";
 import { otherLocale, type Locale } from "@/i18n/config";
 import { currentUserId } from "@/lib/events/access";
 import { safeNext } from "../lib/redirect";
 import { hostMessages } from "../messages";
 import { AuthForm } from "./auth-form";
+import { AuthShell, authSwitchClass } from "./auth-shell";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 type Props = { mode: "login" | "signup"; lang: Locale; searchParams: Search };
@@ -29,26 +28,19 @@ async function FormWithRequest({ mode, lang, searchParams }: Props) {
 export function AuthPage({ mode, lang, searchParams }: Props) {
   const t = hostMessages(lang);
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-10">
-      <div className="flex items-center justify-between">
-        <Link href={`/${lang}` as Route} className="text-2xl font-bold text-primary">
-          {brand.name[lang]}
-        </Link>
-        <Link
-          href={`/${otherLocale(lang)}/${mode}` as Route}
-          lang={otherLocale(lang)}
-          className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-muted hover:bg-raised"
-        >
+    <AuthShell
+      lang={lang}
+      title={mode === "login" ? t.auth.loginTitle : t.auth.signupTitle}
+      lead={mode === "login" ? t.auth.loginLead : t.auth.signupLead}
+      languageSwitch={
+        <Link href={`/${otherLocale(lang)}/${mode}` as Route} lang={otherLocale(lang)} className={authSwitchClass}>
           {t.common.switchLanguage}
         </Link>
-      </div>
-      <Card>
-        <h1 className="text-2xl font-semibold">{mode === "login" ? t.auth.loginTitle : t.auth.signupTitle}</h1>
-        <p className="mb-6 mt-1 text-muted">{mode === "login" ? t.auth.loginLead : t.auth.signupLead}</p>
-        <Suspense fallback={<AuthForm mode={mode} lang={lang} googleEnabled={googleEnabled} />}>
-          <FormWithRequest mode={mode} lang={lang} searchParams={searchParams} />
-        </Suspense>
-      </Card>
-    </main>
+      }
+    >
+      <Suspense fallback={<AuthForm mode={mode} lang={lang} googleEnabled={googleEnabled} />}>
+        <FormWithRequest mode={mode} lang={lang} searchParams={searchParams} />
+      </Suspense>
+    </AuthShell>
   );
 }

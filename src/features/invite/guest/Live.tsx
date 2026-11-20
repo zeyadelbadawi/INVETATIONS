@@ -4,28 +4,35 @@
 // every 5 s, every second inside a countdown, paused while the tab is hidden,
 // backing off when the network fails. The URL never carries a query string.
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiGet, livePath } from "../lib/api";
 import type { LivePayload } from "../types";
 import { useInvite } from "./GuestContext";
 
 type LiveValue = { live: LivePayload | null; failing: boolean };
-const LiveContext = createContext<LiveValue>({ live: null, failing: false });
+// `revision` counts the times the guest data behind the page may have changed
+// (the live version moved): the games and wall hooks refetch when it does.
+const LiveContext = createContext<LiveValue & { revision: number }>({ live: null, failing: false, revision: 0 });
 
 export const useLive = () => useContext(LiveContext);
 
 const IDLE_MS = 5000;
 const COUNTDOWN_MS = 1000;
 const MAX_BACKOFF_MS = 60_000;
+// After a change, wait a moment (and a random bit more) before asking the
+// personal endpoints again, so a full hall does not refetch in the same second.
+const REFETCH_MS = 800;
+const REFETCH_SPREAD_MS = 2200;
 
 export function LiveProvider({ demoLive, children }: { demoLive?: LivePayload; children: ReactNode }) {
-  const { event, status, demo } = useInvite();
+  const { event, status, demo, me, refresh } = useInvite();
   const slug = event.slug;
   // The reveal is public to the link; scores are only shown to guests with a session.
   const closed = event.status === "cancelled" || event.status === "postponed";
   const enabled = !demo && !closed && ((event.kind === "gender_reveal" && event.entitlements.reveal) || (event.entitlements.games && status === "ready"));
   const [value, setValue] = useState<LiveValue>({ live: null, failing: false });
   const phase = useRef<LivePayload["phase"]>("idle");
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     if (!enabled || demoLive) return;
@@ -75,7 +82,32 @@ export function LiveProvider({ demoLive, children }: { demoLive?: LivePayload; c
     };
   }, [slug, enabled, demoLive]);
 
-  return <LiveContext.Provider value={demoLive ? { live: demoLive, failing: false } : value}>{children}</LiveContext.Provider>;
+  // What makes the personal data stale: a new live version (host opened a game,
+  // the reveal moved) and, while this guest waits for approval, any change in
+  // the scores (an approval adds the player to their team's count).
+  const pending = Boolean(me?.player && !me.player.approved);
+  const live = value.live;
+  const marker = live ? `${live.v}${pending ? `:${live.scores.map((s) => `${s.score}/${s.players}`).join(",")}` : ""}` : null;
+  const seen = useRef<string | null>(null);
+  useEffect(() => {
+    if (marker === null || status !== "ready") return;
+    if (seen.current === null || seen.current === marker) {
+      seen.current = marker;
+      return;
+    }
+    seen.current = marker;
+    const timer = setTimeout(
+      () => {
+        refresh();
+        setRevision((n) => n + 1);
+      },
+      REFETCH_MS + Math.random() * REFETCH_SPREAD_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [marker, status, refresh]);
+
+  const provided = useMemo(() => (demoLive ? { live: demoLive, failing: false, revision: 0 } : { ...value, revision }), [demoLive, value, revision]);
+  return <LiveContext.Provider value={provided}>{children}</LiveContext.Provider>;
 }
 
 function sameScores(a: LivePayload, b: LivePayload): boolean {

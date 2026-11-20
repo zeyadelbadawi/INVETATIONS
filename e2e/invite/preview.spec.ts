@@ -54,6 +54,15 @@ test("the preview ignores malformed drafts and scripts in text stay text", async
   await expect(frame.locator(".inv-ov img")).toHaveCount(0);
 });
 
+test("a draft for a template this build does not have says so instead of waiting forever", async ({ page }) => {
+  const content = sampleContent("wedding");
+  const frame = await host(page, { type: "lamma:draft", content, theme: {}, locale: "ar", templateId: "no-such-template", templateVersion: 1, kind: "wedding" });
+  await expect(frame.getByTestId("preview-failed")).toBeVisible();
+  await expect(frame.getByTestId("preview-failed")).toContainText("المعاينة مظهرتش");
+  await expect(frame.getByTestId("preview-failed")).toContainText("The preview didn't load");
+  await page.screenshot({ path: shot("preview-failed") });
+});
+
 // The preview is also the visual harness for states that are hard to reach by hand.
 for (const [name, extra] of [
   ["wedding-sections-ar", { kind: "wedding", locale: "ar", demo: { sections: true } }],

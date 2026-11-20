@@ -41,6 +41,13 @@ export function formatTime(iso: string, timeZone: string | undefined, locale: Lo
   }).format(new Date(iso));
 }
 
+// The date line under the names when the host left it empty: "Friday 25 December".
+export function dateLine(iso: string, timeZone: string, locale: Locale): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(intlLocale(locale), { timeZone: safeZone(timeZone), weekday: "long", day: "numeric", month: "long" }).format(date);
+}
+
 export function formatDateTime(iso: string, timeZone: string | undefined, locale: Locale): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: timeZone ? safeZone(timeZone) : undefined,
@@ -66,6 +73,11 @@ export function zoneDiffers(iso: string, eventZone: string): boolean {
 
 export function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(value);
+}
+
+// Team scores can be fractional (shares of points); guests see whole points.
+export function formatPoints(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
 // First grapheme of each given text: the monogram.

@@ -4,8 +4,9 @@ import { useId, useRef, useState } from "react";
 import { getMessages } from "../messages";
 import { apiPost, guestPath } from "../lib/api";
 import { Icon } from "../Icon";
-import type { GuestRsvp } from "../types";
+import type { GuestPlayer, GuestRsvp } from "../types";
 import { useInvite } from "./GuestContext";
+import { JoinCard, RejoinCode, type JoinResponse } from "./Play";
 
 const GROUP_CAP = 6;
 type Status = GuestRsvp["status"];
@@ -31,6 +32,7 @@ export function Rsvp() {
   const { status, me, expectGuest, event, locale, demo, patch } = useInvite();
   const t = getMessages(locale);
   const noteId = useId();
+  const nameId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const saved = me?.rsvp ?? null;
@@ -39,6 +41,9 @@ export function Rsvp() {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [note, setNote] = useState("");
+  const [name, setName] = useState("");
+  // Shown once, held only in memory: the server never returns the code again.
+  const [rejoinCode, setRejoinCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +64,17 @@ export function Rsvp() {
   const open = me.rsvpOpen && event.status === "published";
   const showForm = open && (saved === null || editing);
   const counted = choice === "yes" || choice === "maybe";
+  // Shared links answer per person, so the server needs a name first. With games
+  // that happens in «يلا نلعب»; without them (Basic plan) the reply asks for it.
+  const games = event.entitlements.games;
+  const needsName = !personal && !me.player;
+  const nameHere = needsName && !games;
+  const claimFirst = nameHere && me.household.length > 0;
+
+  const joined = (response: JoinResponse) => {
+    patch({ player: response.player });
+    setRejoinCode(response.rejoinCode);
+  };
 
   const startEdit = () => {
     setChoice(saved?.status ?? null);
@@ -72,9 +88,19 @@ export function Rsvp() {
   const submit = async (formEvent: React.FormEvent) => {
     formEvent.preventDefault();
     if (demo) return;
+    if (nameHere && Array.from(name.trim()).length < 2) return setError(t.play.invalidName);
     if (!choice) return setError(t.rsvp.pickOne);
     setBusy(true);
     setError(null);
+    if (nameHere) {
+      // Same request and rules as joining from the games section, without a team.
+      const join = await apiPost<{ player: GuestPlayer; rejoinCode: string | null }>(guestPath(event.slug, "join"), { name: name.trim() });
+      if (!join.ok) {
+        setBusy(false);
+        return setError(join.error === "invalid_name" || join.error === "invalid" ? t.play.invalidName : join.error === "full" ? t.play.full : join.error === "slow_down" ? t.common.slowDown : t.common.error);
+      }
+      joined(join.data);
+    }
     const body = { status: choice, adults: counted ? (personal ? adults : 1) : 0, children: counted && personal ? children : 0, note: note.trim() };
     const result = await apiPost<{ rsvp: GuestRsvp }>(guestPath(event.slug, "rsvp"), body);
     setBusy(false);
@@ -104,14 +130,23 @@ export function Rsvp() {
       </h2>
       {personal ? <p className="inv-hint">{t.rsvp.forParty(me.invitation.label)}</p> : null}
 
-      {!personal && !me.player ? (
+      {rejoinCode ? <RejoinCode code={rejoinCode} onDone={() => (setRejoinCode(null), headingRef.current?.focus())} /> : null}
+      {needsName && games ? (
         <p className="inv-text" data-testid="rsvp-join-first">
           <a className="inv-link" href="#play">
             {t.rsvp.joinFirst}
           </a>
         </p>
+      ) : claimFirst ? (
+        <JoinCard onJoined={joined} withTeams={false} />
       ) : showForm ? (
-        <form className="inv-form" onSubmit={submit} noValidate>
+        <form className="inv-form" onSubmit={submit} noValidate data-testid="rsvp-form">
+          {nameHere ? (
+            <label className="inv-field" htmlFor={nameId}>
+              <span className="inv-field__label">{t.play.name}</span>
+              <input id={nameId} className="inv-input" name="guest-name" autoComplete="name" maxLength={40} placeholder={t.play.namePlaceholder} value={name} onChange={(e) => (setName(e.target.value), setError(null))} disabled={busy || demo} data-testid="rsvp-name" />
+            </label>
+          ) : null}
           <fieldset className="inv-choices" disabled={busy || demo}>
             <legend className="inv-sr">{t.rsvp.title}</legend>
             {options.map(([value, label]) => (

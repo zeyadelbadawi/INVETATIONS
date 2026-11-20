@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { pick } from "@/content/schema";
 import { getMessages } from "../messages";
-import { formatNumber } from "../lib/format";
+import { formatPoints } from "../lib/format";
 import { teamColor, useInvite } from "../guest/GuestContext";
 import type { RecapData } from "./types";
 
@@ -28,7 +28,7 @@ export function RecapSection({ recap }: { recap: RecapData }) {
             <span className="inv-score__name">
               {pick(team.name, locale)}
             </span>
-            <span className="inv-score__value inv-num">{formatNumber(team.score, locale)}</span>
+            <span className="inv-score__value inv-num">{formatPoints(team.score, locale)}</span>
             <span className="inv-score__bar" aria-hidden="true" />
           </li>
         ))}

@@ -26,16 +26,14 @@ export function Countdown({ target, locale }: { target: string; locale: Locale }
   if (left === 0) return <p className="inv-countdown__done">{t.blocks.started}</p>;
 
   const seconds = left === null ? null : Math.floor(left / 1000);
-  const cells: [string, string][] = [
-    [seconds === null ? "––" : String(Math.floor(seconds / 86400)), t.blocks.days],
-    [seconds === null ? "––" : pad(Math.floor((seconds % 86400) / 3600)), t.blocks.hours],
-    [seconds === null ? "––" : pad(Math.floor((seconds % 3600) / 60)), t.blocks.minutes],
-    [seconds === null ? "––" : pad(seconds % 60), t.blocks.seconds],
-  ];
+  // The server render has no time: its labels take the "many" form, which reads right under dashes.
+  const parts = seconds === null ? null : [Math.floor(seconds / 86400), Math.floor((seconds % 86400) / 3600), Math.floor((seconds % 3600) / 60), seconds % 60];
+  const labels = [t.blocks.days, t.blocks.hours, t.blocks.minutes, t.blocks.seconds];
+  const cells: [string, string][] = labels.map((label, i) => [parts === null ? "––" : i === 0 ? String(parts[0]) : pad(parts[i]), label(parts === null ? 11 : parts[i])]);
   return (
     <div className="inv-countdown" role="timer" aria-label={t.blocks.countdown}>
-      {cells.map(([value, label]) => (
-        <div key={label} className="inv-countdown__cell">
+      {cells.map(([value, label], index) => (
+        <div key={index} className="inv-countdown__cell">
           {/* Keyed by value: each change re-mounts the digits, which roll in once (the clock's own motion). */}
           <span key={value} className="inv-countdown__value inv-num">
             {value}

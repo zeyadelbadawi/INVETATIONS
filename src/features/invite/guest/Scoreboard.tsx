@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { pick } from "@/content/schema";
 import { getMessages } from "../messages";
-import { formatNumber } from "../lib/format";
+import { formatPoints } from "../lib/format";
 import { teamColor, useInvite } from "./GuestContext";
 import { useLive } from "./Live";
 
@@ -44,9 +44,9 @@ export function Scoreboard() {
               {row.mine ? <span className="inv-score__you">{t.play.you}</span> : null}
             </span>
             <span className="inv-score__value inv-num" data-testid={`score-${row.team.key}`}>
-              {formatNumber(row.score, locale)}
+              {formatPoints(row.score, locale)}
             </span>
-            <span className="inv-score__players">{t.play.players(row.players)}</span>
+            <span className="inv-score__players">{row.mine ? t.play.playersWithYou(row.players) : t.play.players(row.players)}</span>
             {duel ? null : <span className="inv-score__bar" aria-hidden="true" />}
           </li>
         ))}

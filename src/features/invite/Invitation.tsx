@@ -14,8 +14,8 @@ import type { Palette, Template } from "@/templates/types";
 import { getMessages } from "./messages";
 import { inviteFontClass } from "./fonts";
 import { reportHref } from "./config";
-import { initials, luminance } from "./lib/format";
-import { hasBothLanguages } from "./lib/content";
+import { dateLine, initials, luminance } from "./lib/format";
+import { eventStart, hasBothLanguages } from "./lib/content";
 import { BlockView, type BlockContext } from "./blocks/Blocks";
 import { InviteProvider } from "./guest/GuestContext";
 import { LiveProvider } from "./guest/Live";
@@ -73,10 +73,25 @@ export function Invitation({ event, template, palette, locale, scene, revealStyl
   const paper = HEX.test(palette.tokens.paper) ? palette.tokens.paper : "#f6efe4";
   const dark = luminance(paper) < 0.2;
 
+  // An empty date line on the hold is filled from the event's start, so the
+  // opening always says when (public data: the start is in the shell anyway).
+  const startsAt = eventStart(event);
+  const fallbackDate = startsAt ? dateLine(startsAt, event.timezone, locale) : "";
   const overlays: OverlayItem[] = template.overlays
     .filter((slot) => !sceneRef || slot.scene === sceneRef.id)
-    .map((slot) => ({ key: slot.field, role: slot.role, appear: slot.appear, position: slot.position, align: slot.align, wash: slot.wash, text: pick(event.fields[slot.field], locale).trim() }))
+    .map((slot) => {
+      const text = pick(event.fields[slot.field], locale).trim() || (slot.role === "subtitle" ? fallbackDate : "");
+      return { key: slot.field, role: slot.role, appear: slot.appear, position: slot.position, align: slot.align, wash: slot.wash, text };
+    })
     .filter((item) => item.text !== "");
+  // The words of the first screen, before the scene moves: the opening line and who it is from.
+  const intro = {
+    eyebrow: overlays.find((item) => item.role === "eyebrow")?.text || t.hero.invited,
+    title: overlays
+      .filter((item) => item.role === "title")
+      .map((item) => item.text)
+      .join(locale === "ar" ? " و" : " & "),
+  };
   const monogram = initials(template.splash.from.map((key) => pick(event.fields[key], locale)));
 
   const publicById = new Map(event.blocks.map((block) => [block.id, block]));
@@ -121,13 +136,13 @@ export function Invitation({ event, template, palette, locale, scene, revealStyl
           <MotionProvider>
             <header className="inv-head">
               {scene && sceneRef ? (
-                <OpeningScene source={scene.source} manifest={scene.manifest} scene={sceneRef} overlays={overlays} monogram={monogram} labels={{ alt: t.hero.sceneAlt, splash: t.hero.splash, continue: t.hero.continue }} splash={!preview}>
+                <OpeningScene source={scene.source} manifest={scene.manifest} scene={sceneRef} overlays={overlays} intro={intro} monogram={monogram} labels={{ alt: t.hero.sceneAlt, splash: t.hero.splash, continue: t.hero.continue }} splash={!preview}>
                   {top}
                 </OpeningScene>
               ) : (
                 <PlainOpening overlays={overlays}>{top}</PlainOpening>
               )}
-              <DetailsCta label={t.hero.cta} />
+              <DetailsCta label={t.hero.cta} publicLabel={t.hero.ctaPublic} />
             </header>
 
             <main id="details" className="inv-body" tabIndex={-1}>

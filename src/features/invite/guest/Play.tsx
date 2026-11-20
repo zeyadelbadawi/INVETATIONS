@@ -8,9 +8,9 @@ import type { GuestPlayer } from "../types";
 import { teamColor, useInvite } from "./GuestContext";
 import { Scoreboard } from "./Scoreboard";
 
-type JoinResponse = { player: GuestPlayer; rejoinCode: string | null };
+export type JoinResponse = { player: GuestPlayer; rejoinCode: string | null };
 
-function RejoinCode({ code, onDone }: { code: string; onDone: () => void }) {
+export function RejoinCode({ code, onDone }: { code: string; onDone: () => void }) {
   const { locale } = useInvite();
   const t = getMessages(locale);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,12 +47,14 @@ function Badge() {
   );
 }
 
-function JoinCard({ onJoined }: { onJoined: (response: JoinResponse) => void }) {
+// The join form. `withTeams` is false where there are no games (the reply asks
+// only for a name): the server then deals the player in as it would anyway.
+export function JoinCard({ onJoined, withTeams = true }: { onJoined: (response: JoinResponse) => void; withTeams?: boolean }) {
   const { me, event, locale, teamJoin, demo } = useInvite();
   const t = getMessages(locale);
   const nameId = useId();
   const codeId = useId();
-  const canPick = teamJoin === "pick" && !event.settings.lockTeams && (me?.teams.length ?? 0) > 0;
+  const canPick = withTeams && teamJoin === "pick" && !event.settings.lockTeams && (me?.teams.length ?? 0) > 0;
   const household = me?.household ?? [];
   const personal = me?.invitation.kind === "personal";
 
@@ -135,7 +137,7 @@ function JoinCard({ onJoined }: { onJoined: (response: JoinResponse) => void }) 
 
   return (
     <form className="inv-form inv-join" onSubmit={submitNew} noValidate data-testid="join-form">
-      <p className="inv-text">{canPick ? t.play.intro : t.play.introAssigned}</p>
+      <p className="inv-text">{!withTeams ? t.rsvp.nameIntro : canPick ? t.play.intro : t.play.introAssigned}</p>
       <label className="inv-field" htmlFor={nameId}>
         <span className="inv-field__label">{t.play.name}</span>
         <input id={nameId} className="inv-input" name="player-name" autoComplete="given-name" maxLength={40} placeholder={t.play.namePlaceholder} value={name} onChange={(e) => setName(e.target.value)} disabled={busy || demo} enterKeyHint="done" />
@@ -156,7 +158,7 @@ function JoinCard({ onJoined }: { onJoined: (response: JoinResponse) => void }) 
       </p>
       <div className="inv-actions">
         <button type="submit" className="inv-btn inv-btn--solid inv-btn--wide" disabled={busy || demo}>
-          {busy ? t.play.joining : t.play.join}
+          {busy ? t.play.joining : withTeams ? t.play.join : t.rsvp.nameContinue}
         </button>
         {household.length > 0 ? (
           <button type="button" className="inv-link" onClick={() => (setMode("claim"), setError(null))}>

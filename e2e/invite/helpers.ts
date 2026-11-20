@@ -103,7 +103,7 @@ export type Seeded = {
   labels: { personal: string; group: string };
 };
 
-export async function seedEvent(kind: Kind, opts: { palette?: string; status?: string; arabicOnly?: boolean } = {}): Promise<Seeded> {
+export async function seedEvent(kind: Kind, opts: { palette?: string; status?: string; arabicOnly?: boolean; plan?: "premium" | "essential" } = {}): Promise<Seeded> {
   const email = `e2e-${randomBytes(6).toString("hex")}@example.test`;
   const user = await admin.auth.admin.createUser({ email, password: randomBytes(12).toString("hex"), email_confirm: true });
   if (user.error) throw user.error;
@@ -122,7 +122,7 @@ export async function seedEvent(kind: Kind, opts: { palette?: string; status?: s
       template_id: TEMPLATE[kind],
       template_version: 1,
       status: opts.status ?? "published",
-      plan_id: "premium",
+      plan_id: opts.plan ?? "premium",
       published_version: 1,
       content,
       published_content: { public: published.public, guest: published.guest, order: published.order },

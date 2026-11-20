@@ -15,10 +15,12 @@
   --line: color-mix(in oklab, var(--ink) 16%, var(--paper));
   --tint: color-mix(in oklab, var(--accent-soft) 60%, var(--paper));
   --accent-text: color-mix(in oklab, var(--accent) 80%, var(--ink));
-  /* Team hues are fixed so a side keeps its colour on every palette. White text passes on all three. */
-  --team-a: #2b6fd6;
-  --team-b: #c93a74;
-  --team-c: #12806f;
+  /* Team hues are fixed so a side keeps its colour on every palette. They are
+   * accents only (a bar, a name, a number), never the fill of a card; text in a
+   * team's colour is mixed toward the ink so it reads on light and dark paper. */
+  --team-a: #3a6aa8;
+  --team-b: #b0446c;
+  --team-c: #1f7a68;
   --on-team: #ffffff;
   --font-display: var(--font-display-en), var(--font-display-ar), Georgia, serif;
   --font-num: var(--font-display-en), Georgia, serif;
@@ -616,34 +618,92 @@ textarea.inv-input {
     transform: scaleY(1);
   }
 }
+/* The way to the details: the foot of the frame, a full-width band in the
+ * scene's dark colour with a hairline over it. It slides away under the edge. */
 .inv-cta {
   position: fixed;
   z-index: 20;
-  inset-block-end: max(1rem, env(safe-area-inset-bottom));
-  left: 50%;
-  display: inline-flex;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  padding: 0 1.25rem;
-  border-radius: var(--radius-control);
-  background: var(--scene-fg);
-  color: var(--scene-shade);
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: calc(3.5rem + env(safe-area-inset-bottom));
+  padding: 0 1rem env(safe-area-inset-bottom);
+  border-block-start: 1px solid color-mix(in srgb, var(--scene-fg) 28%, transparent);
+  background: var(--scene-shade);
+  color: var(--scene-fg);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
-  transform: translateX(-50%);
-  transition:
-    opacity 200ms ease,
-    transform 200ms var(--ease-out);
+  transition: transform 260ms var(--ease-out);
 }
-.inv-cta:active {
-  transform: translateX(-50%) scale(0.97);
+.inv-cta span {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.35em;
+  text-decoration-color: color-mix(in srgb, var(--scene-fg) 45%, transparent);
+}
+.inv-cta:active span {
+  text-decoration-color: currentColor;
+}
+.inv-cta:focus-visible {
+  outline-offset: -4px;
+  outline-color: var(--scene-fg);
 }
 .inv-cta[data-away="true"] {
-  opacity: 0;
-  transform: translateX(-50%) translateY(12px);
+  transform: translateY(101%);
   pointer-events: none;
+}
+
+/* The first screen's words, on a calm band of the scene's dark colour that
+ * rises from the Details band. Present from the first frame (no JS needed);
+ * they give way as soon as the scene starts to move, before the hold copy. */
+.inv-scene__intro {
+  --gone: clamp(0, var(--seq-progress, 0) * 9, 1);
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  padding: 4.5rem 1.25rem calc(4.75rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--scene-shade) 0, color-mix(in srgb, var(--scene-shade) 88%, transparent) 42%, transparent);
+  color: var(--scene-fg);
+  text-align: center;
+  opacity: calc(1 - var(--gone));
+  transform: translate3d(0, calc(var(--gone) * 1.5rem), 0);
+  pointer-events: none;
+}
+.inv-scene__intro .inv-scene__cue {
+  position: static;
+  margin-bottom: 0.9rem;
+  justify-self: center;
+}
+.inv-scene__eyebrow {
+  margin: 0;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.inv-scene__title {
+  margin: 0;
+  max-width: 18em;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9.5cqi, 3.25rem);
+  font-weight: 700;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+.inv[lang="en"] .inv-scene__title {
+  font-weight: 400;
+  line-height: 1.1;
+}
+/* The still version shows the hold copy at once: no second copy of it. */
+[data-animated="false"] .inv-scene__intro {
+  display: none;
 }
 .inv-plain {
   position: relative;
@@ -1163,8 +1223,8 @@ textarea.inv-input {
   display: grid;
   justify-items: center;
   gap: 0.35rem;
-  padding-block: 2rem;
-  border-block: 1px solid var(--line);
+  padding-block-start: 2rem;
+  border-block-start: 1px solid var(--line);
   text-align: center;
 }
 .inv-locked .inv-text {
@@ -1251,27 +1311,45 @@ textarea.inv-input {
   position: relative;
   cursor: pointer;
 }
+/* A team: its name in the team's colour over a short bar of it. Chosen, the
+ * frame closes in ink and the bar runs the full width. */
 .inv-team__name {
+  position: relative;
   display: grid;
   place-items: center;
-  min-height: 5rem;
-  padding: 0.6rem 0.4rem;
-  border: 2px solid var(--team);
+  min-height: 4.5rem;
+  padding: 0.9rem 0.5rem 0.6rem;
+  border: 1.5px solid var(--line);
   border-radius: var(--radius-control);
-  background: color-mix(in oklab, var(--team) 9%, var(--paper));
+  background: var(--paper);
+  color: color-mix(in oklab, var(--team) 74%, var(--ink));
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 1.4;
   text-align: center;
   overflow-wrap: break-word;
   transition:
-    transform 180ms var(--ease-spring),
-    background-color 140ms ease,
-    color 140ms ease;
+    transform 180ms var(--ease-out),
+    border-color 140ms ease;
+}
+.inv-team__name::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -1.5px;
+  left: 50%;
+  width: 2.5rem;
+  height: 4px;
+  border-radius: 0 0 2px 2px;
+  background: var(--team);
+  translate: -50% 0;
+  transition: width 220ms var(--ease-out);
 }
 .inv-team input:checked + .inv-team__name {
-  background: var(--team);
-  color: var(--on-team);
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.inv-team input:checked + .inv-team__name::before {
+  width: calc(100% - 1.5rem);
 }
 .inv-team input:active + .inv-team__name {
   transform: scale(0.97);
@@ -1288,13 +1366,13 @@ textarea.inv-input {
   display: grid;
   gap: 1rem;
 }
+/* The guest on their team: their name, and the team in its colour on a bar. */
 .inv-badge {
   display: grid;
   gap: 0.1rem;
-  padding: 1rem 1.1rem;
-  border-radius: var(--radius-control);
-  background: var(--team);
-  color: var(--on-team);
+  padding-block: 0.15rem;
+  padding-inline-start: 1rem;
+  border-inline-start: 4px solid var(--team);
   animation: inv-rise 420ms var(--ease-out) both;
 }
 .inv-badge__name {
@@ -1304,10 +1382,7 @@ textarea.inv-input {
 }
 .inv-badge__team {
   font-weight: 600;
-}
-.inv-badge .inv-hint {
-  color: inherit;
-  opacity: 0.9;
+  color: color-mix(in oklab, var(--team) 74%, var(--ink));
 }
 @keyframes inv-rise {
   from {
@@ -1337,7 +1412,7 @@ textarea.inv-input {
 }
 .inv-rope {
   position: relative;
-  height: 12px;
+  height: 6px;
   margin: 1rem 0 0.9rem;
   border-radius: 999px;
   background: var(--team-end);
@@ -1367,11 +1442,11 @@ textarea.inv-input {
 }
 .inv-rope__mark {
   position: absolute;
-  inset-block-start: -7px;
-  inset-inline-start: -3px;
-  width: 6px;
-  height: 28px;
-  border-radius: 3px;
+  inset-block-start: -8px;
+  inset-inline-start: -1.5px;
+  width: 3px;
+  height: 22px;
+  border-radius: 1.5px;
   background: var(--ink);
   box-shadow: 0 0 0 2px var(--paper);
 }
@@ -1427,7 +1502,7 @@ textarea.inv-input {
 .inv-score__bar,
 .inv-tally__bar {
   grid-column: 1 / -1;
-  height: 10px;
+  height: 6px;
   margin-top: 0.35rem;
   border-radius: 999px;
   background: color-mix(in oklab, var(--ink) 10%, transparent);
@@ -1457,8 +1532,9 @@ textarea.inv-input {
   justify-items: center;
   gap: 0.75rem;
   min-height: 28rem;
+  /* A band across the page, not a card: it runs to the screen edges on phones. */
+  margin-inline: -1.25rem;
   padding: 2.75rem 1.25rem 2.25rem;
-  border-radius: var(--radius);
   background: var(--ink);
   color: var(--paper);
   text-align: center;
@@ -1939,6 +2015,30 @@ textarea.inv-input {
 }
 
 /* ───────────── Preview ───────────── */
+.inv-preview-wait {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+.inv-preview-wait + .inv-preview-wait {
+  margin-top: 1rem;
+}
+.inv-preview-wait__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.inv-preview-wait[lang="ar"] .inv-preview-wait__title {
+  font-size: 1.9rem;
+}
+.inv-preview-wait[lang="en"] {
+  --font-display: var(--font-display-en), Georgia, serif;
+}
+.inv-preview-wait[lang="en"] .inv-preview-wait__title {
+  font-weight: 400;
+}
 .inv-preview-flag {
   position: sticky;
   inset-block-start: 0;

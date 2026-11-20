@@ -6,23 +6,48 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { defaultLocale, isLocale, type Locale } from "@/i18n/config";
+import { defaultLocale as appDefaultLocale, isLocale, type Locale } from "@/i18n/config";
 import { apiPost, guestPath } from "../lib/api";
 import { getMessages } from "../messages";
 import { writeGuestHint } from "../guest/GuestContext";
 import { Gate } from "./Gate";
 import { useBrowserLocale } from "./useBrowserLocale";
 
-type View = { name: "opening" } | { name: "confirm"; label: string } | { name: "invalid" } | { name: "busy" };
+// invalid: the link itself is wrong (unknown, revoked, cut short). busy: rate
+// limited. offline: no answer at all. error: the server refused or failed, so
+// the link may well be fine and trying again makes sense.
+type View = { name: "opening" } | { name: "confirm"; label: string } | { name: "invalid" } | { name: "busy" } | { name: "offline" } | { name: "error" };
 type SessionOk = { ok: true; locale: string };
 
 const CODE = /^[A-Za-z0-9_-]{16,32}$/;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-export function LinkEntry() {
+// Shown by the server while the page is still on its way: the same hairline,
+// running, so the screen is never an empty colour.
+export function LinkEntryLoading() {
+  return (
+    <Gate locale={appDefaultLocale} busy>
+      <p className="inv-sr" role="status">
+        {getMessages("ar").link.opening} {getMessages("en").link.opening}
+      </p>
+    </Gate>
+  );
+}
+
+export type LinkEntryProps = {
+  // The language the event is written in (null: both, or unknown event).
+  eventLocale: Locale | null;
+  // Where a guest goes without a code: the event's default language.
+  defaultLocale: Locale | null;
+  // The event's public title, shown while the link is checked.
+  title: { ar: string; en: string };
+};
+
+export function LinkEntry({ eventLocale, defaultLocale, title }: LinkEntryProps) {
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" && SLUG.test(params.slug) ? params.slug : "";
-  const locale = useBrowserLocale();
+  const browserLocale = useBrowserLocale();
+  const locale = eventLocale ?? browserLocale;
   const t = getMessages(locale);
   const [view, setView] = useState<View>({ name: "opening" });
   const code = useRef<string | null>(null);
@@ -37,14 +62,20 @@ export function LinkEntry() {
     if (result.ok) {
       code.current = null;
       writeGuestHint(slug, true);
-      go(isLocale(result.data.locale) ? result.data.locale : defaultLocale);
+      go(isLocale(result.data.locale) ? result.data.locale : (defaultLocale ?? appDefaultLocale));
     } else if (result.status === 409 && result.error === "needs_confirmation") {
       setView({ name: "confirm", label: typeof result.data.currentLabel === "string" ? result.data.currentLabel : "" });
-    } else if (result.status === 429 || result.status === 0 || result.status >= 500) {
-      setView({ name: "busy" });
-    } else {
+    } else if (result.status === 404) {
+      // Unknown event, or a code that matches no live invitation.
       code.current = null;
       setView({ name: "invalid" });
+    } else if (result.status === 429) {
+      setView({ name: "busy" });
+    } else if (result.status === 0) {
+      setView({ name: "offline" });
+    } else {
+      // 403 (origin), 5xx and anything else: the code is kept for a retry.
+      setView({ name: "error" });
     }
   };
 
@@ -55,7 +86,7 @@ export function LinkEntry() {
     // Take the code out of the address bar and the history entry before anything else.
     if (fragment) window.history.replaceState(null, "", window.location.pathname);
     if (!slug) return void setTimeout(() => setView({ name: "invalid" }), 0);
-    if (!fragment) return go(defaultLocale);
+    if (!fragment) return go(defaultLocale ?? locale);
     if (!CODE.test(fragment)) return void setTimeout(() => setView({ name: "invalid" }), 0);
     code.current = fragment;
     void exchange(false);
@@ -63,12 +94,29 @@ export function LinkEntry() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const retry = (titleText: string, body: string) => (
+    <>
+      <h1 className="inv-gate__title" role="alert">
+        {titleText}
+      </h1>
+      <p className="inv-gate__body">{body}</p>
+      <div className="inv-actions">
+        <button type="button" className="inv-btn inv-btn--solid" onClick={() => exchange(false)}>
+          {t.common.retry}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <Gate locale={locale} busy={view.name === "opening"}>
       {view.name === "opening" ? (
-        <p className="inv-gate__body" role="status">
-          {t.link.opening}
-        </p>
+        <>
+          {title[locale] ? <p className="inv-gate__title">{title[locale]}</p> : null}
+          <p className="inv-gate__body" role="status" data-testid="link-opening">
+            {t.link.opening}
+          </p>
+        </>
       ) : view.name === "confirm" ? (
         <div role="alertdialog" aria-labelledby="switch-title" aria-describedby="switch-body" className="inv-gate__card">
           <h1 id="switch-title" className="inv-gate__title">
@@ -87,16 +135,11 @@ export function LinkEntry() {
           </div>
         </div>
       ) : view.name === "busy" ? (
-        <>
-          <p className="inv-gate__body" role="alert">
-            {t.link.busy}
-          </p>
-          <div className="inv-actions">
-            <button type="button" className="inv-btn inv-btn--solid" onClick={() => exchange(false)}>
-              {t.common.retry}
-            </button>
-          </div>
-        </>
+        retry(t.link.busyTitle, t.link.busy)
+      ) : view.name === "offline" ? (
+        retry(t.link.offlineTitle, t.link.offline)
+      ) : view.name === "error" ? (
+        retry(t.link.errorTitle, t.link.error)
       ) : (
         <>
           <h1 className="inv-gate__title" role="alert">

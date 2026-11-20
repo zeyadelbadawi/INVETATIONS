@@ -15,6 +15,8 @@ export type OpeningSceneProps = {
   manifest: VideoManifest;
   scene: Pick<SceneRef, "scrollVh" | "holdVh" | "leadVh" | "gate">;
   overlays: OverlayItem[];
+  // The first screen's words: shown from the start, they give way as the scene moves.
+  intro?: { eyebrow: string; title: string };
   monogram: string[];
   labels: { alt: string; splash: string; continue: string };
   // False in the editor preview, where no boot script locked the page.
@@ -120,7 +122,7 @@ export function Monogram({ letters }: { letters: string[] }) {
   );
 }
 
-export function OpeningScene({ source, manifest, scene, overlays, monogram, labels, splash, children }: OpeningSceneProps) {
+export function OpeningScene({ source, manifest, scene, overlays, intro, monogram, labels, splash, children }: OpeningSceneProps) {
   return (
     <>
       {splash ? (
@@ -142,7 +144,16 @@ export function OpeningScene({ source, manifest, scene, overlays, monogram, labe
         frameOverlay={(context) => <Overlays overlays={overlays} context={context} manifest={manifest} />}
       >
         <div className="inv-scene__top">{children}</div>
-        <span className="inv-scene__cue" aria-hidden="true" />
+        {intro && (intro.eyebrow || intro.title) ? (
+          // Decorative duplicate of the hold copy (which carries the words for screen readers).
+          <div className="inv-scene__intro" aria-hidden="true">
+            <span className="inv-scene__cue" />
+            {intro.eyebrow ? <p className="inv-scene__eyebrow">{intro.eyebrow}</p> : null}
+            {intro.title ? <p className="inv-scene__title">{intro.title}</p> : null}
+          </div>
+        ) : (
+          <span className="inv-scene__cue" aria-hidden="true" />
+        )}
       </ScrollScene>
     </>
   );

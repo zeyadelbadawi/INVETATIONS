@@ -40,7 +40,8 @@ function Section({ block, title, hideTitle, children }: { block: Block; title: s
 function Details({ block, ctx }: Props<"details">) {
   const { event, locale } = ctx;
   const t = getMessages(locale);
-  const startsAt = block.startsAt ?? event.startsAt;
+  // One date source: the event start from Settings; a date left in this section is only a fallback.
+  const startsAt = eventStart(event, [block, ...(ctx.extraBlocks ?? [])]);
   const parts = startsAt ? dateParts(startsAt, event.timezone, locale) : null;
   const venue = pick(block.venue, locale);
   const city = pick(block.city, locale);
@@ -62,8 +63,9 @@ function Details({ block, ctx }: Props<"details">) {
       {startsAt ? <ViewerTime iso={startsAt} timeZone={event.timezone} locale={locale} /> : null}
       {venue || city ? (
         <p className="inv-venue">
-          {venue ? <span className="inv-venue__name">{venue}</span> : null}
-          {city ? <span className="inv-venue__city">{city}</span> : null}
+          {/* A city on its own is the place: set it as one, not as a muted afterthought. */}
+          <span className="inv-venue__name">{venue || city}</span>
+          {venue && city ? <span className="inv-venue__city">{city}</span> : null}
         </p>
       ) : null}
       {block.doorsAt ? (

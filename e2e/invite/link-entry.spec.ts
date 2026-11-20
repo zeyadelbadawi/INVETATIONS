@@ -28,7 +28,7 @@ test("a personal link opens the invitation, and the code is gone from the URL an
 
 test("a wrong code shows a friendly message and creates no session", async ({ page }) => {
   await page.goto(`/l/${event.slug}#AAAAAAAAAAAAAAAAAAAAAA`);
-  await expect(page.locator("h1[role=alert]")).toContainText("الرابط ده مش شغال");
+  await expect(page.locator("h1[role=alert]")).toContainText("اللينك ده مش شغال");
   expect(page.url()).not.toContain("AAAA");
   await page.screenshot({ path: shot("link-invalid-ar") });
   const status = await page.evaluate(async (slug) => (await fetch(`/api/guest/${slug}/me`)).status, event.slug);
@@ -58,5 +58,37 @@ test("a plain GET without JavaScript does nothing", async ({ browser }) => {
   const response = await page.goto(`/l/${event.slug}`);
   expect(response?.status()).toBe(200);
   expect((await context.cookies()).filter((cookie) => cookie.name.startsWith("__Host-g_"))).toHaveLength(0);
+  await context.close();
+});
+
+test("while the link is checked the page names the invitation; a refusal from the server is not called a bad link", async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/api/guest/*/session", async (route) => {
+    await held;
+    await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: "bad_origin" }) });
+  });
+  await page.goto(`/l/${event.slug}#${event.codes.group}`);
+  await expect(page.getByTestId("link-opening")).toBeVisible();
+  await expect(page.locator(".inv-gate__title")).toContainText("ياسمين");
+  await page.screenshot({ path: shot("link-opening-ar") });
+  release();
+  await expect(page.locator("h1[role=alert]")).toContainText("حصلت مشكلة عندنا");
+  await expect(page.locator(".inv-gate__body")).toContainText("المشكلة مش في اللينك");
+  await page.screenshot({ path: shot("link-error-ar") });
+
+  // The code was kept: trying again (now accepted) opens the invitation.
+  await page.unroute("**/api/guest/*/session");
+  await page.getByRole("button", { name: "جرّب تاني" }).click();
+  await page.waitForURL(new RegExp(`/i/${event.slug}/ar$`));
+});
+
+test("the link page speaks the event's language, not only the phone's", async ({ browser }) => {
+  const arabicOnly = await seedEvent("wedding", { arabicOnly: true });
+  const context = await browser.newContext({ locale: "en-GB" });
+  const page = await context.newPage();
+  await page.goto(`/l/${arabicOnly.slug}#AAAAAAAAAAAAAAAAAAAAAA`);
+  await expect(page.locator("h1[role=alert]")).toContainText("اللينك ده مش شغال");
+  await expect(page.locator(".inv")).toHaveAttribute("lang", "ar");
   await context.close();
 });

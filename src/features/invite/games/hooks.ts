@@ -17,7 +17,7 @@ async function submit(path: string, body: unknown): Promise<SubmitResult> {
 
 export function useGames(): GamesData | null {
   const { event, status, me, demo, refresh: refreshMe } = useInvite();
-  const { live } = useLive();
+  const { live, revision } = useLive();
   const [games, setGames] = useState<GameItem[] | null>(null);
   const [tick, setTick] = useState(0);
   const slug = event.slug;
@@ -31,7 +31,7 @@ export function useGames(): GamesData | null {
       if (!controller.signal.aborted && result.ok && Array.isArray(result.data.games)) setGames(result.data.games);
     });
     return () => controller.abort();
-  }, [enabled, slug, playerId, tick]);
+  }, [enabled, slug, playerId, tick, revision]);
 
   const refresh = useCallback(() => setTick((n) => n + 1), []);
   const canSwitch = Boolean(me?.player && !me.player.teamSwitchedAt) && event.kind === "gender_reveal" && !event.settings.lockTeams && (live?.phase ?? "idle") === "idle";
@@ -59,6 +59,7 @@ export function useGames(): GamesData | null {
 
 export function useWall(): WallData | null {
   const { event, status, me, demo } = useInvite();
+  const { revision } = useLive();
   const [posts, setPosts] = useState<WallPost[] | null>(null);
   const [tick, setTick] = useState(0);
   const slug = event.slug;
@@ -73,7 +74,7 @@ export function useWall(): WallData | null {
       if (!controller.signal.aborted && result.ok && Array.isArray(result.data.posts)) setPosts(result.data.posts);
     });
     return () => controller.abort();
-  }, [enabled, slug, playerId, tick]);
+  }, [enabled, slug, playerId, tick, revision]);
 
   const voice = event.entitlements.voice;
   const photos = event.entitlements.photos;

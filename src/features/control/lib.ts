@@ -10,6 +10,20 @@ import { normaliseName } from "@/lib/security/names";
 
 const actorKind = (actor: Actor) => (actor.kind === "staff" ? "staff" : "host");
 
+// Moves the public live version so guests' pages refetch their own data
+// (approvals, games). The payload itself carries nothing new. A lost race with
+// another bump is harmless: either write tells clients to refetch.
+export async function bumpLiveVersion(eventId: string): Promise<void> {
+  const db = adminDb();
+  const { data } = await db.from("live_state").select("version").eq("event_id", eventId).maybeSingle();
+  if (!data) return;
+  await db
+    .from("live_state")
+    .update({ version: data.version + 1, updated_at: new Date().toISOString() })
+    .eq("event_id", eventId)
+    .eq("version", data.version);
+}
+
 // Hosts and moderators can show or hide a post. A staff takedown cannot be undone here (security A7).
 export async function setPostStatus(eventId: string, actor: Actor, postId: string, status: "visible" | "hidden"): Promise<boolean> {
   const { data, error } = await adminDb()
@@ -35,6 +49,7 @@ export async function setPlayerApproved(eventId: string, actor: Actor, playerId:
   if (error) throw new Error(`approval failed: ${error.message}`);
   if (!data || data.length === 0) return false;
   await refreshScores(eventId);
+  await bumpLiveVersion(eventId);
   await audit({ actorId: actor.userId, actorKind: actorKind(actor), action: approved ? "player.approved" : "player.unapproved", eventId, target: playerId, grantId: actor.grantId });
   return true;
 }

@@ -50,6 +50,8 @@ async function newEvent(userId: string, name = "Sara & Omar") {
 }
 
 async function filledContent(eventId: string): Promise<EventContent> {
+  // Publishing needs the event date (Settings), the one source of truth for it.
+  await admin.from("events").update({ starts_at: "2026-12-31T17:30:00Z" }).eq("id", eventId);
   const { data } = await admin.from("events").select("content").eq("id", eventId).single();
   const content = contentSchema.parse(data!.content);
   content.fields.partner_one = { ar: "سارة", en: "Sara" };
@@ -276,6 +278,28 @@ describe("publishing", () => {
     expect(data).toEqual({ status: "draft", published_content: null, published_version: 0 });
   });
 
+  it("needs the event date and, for weddings, a venue; block dates never reach the published page", async () => {
+    const event = await newEvent(a.id);
+    const content = await filledContent(event.id);
+    await admin.from("events").update({ starts_at: null }).eq("id", event.id);
+    for (const block of content.blocks) {
+      if (block.type === "location") block.address = { ar: "", en: "" };
+      if (block.type === "details") block.startsAt = "2027-01-02T18:00:00Z";
+    }
+    await saveDraft(db, owner(a.id), event.id, content, {});
+    await pay(event.id, a.id, "essential");
+    expect(await code(publishEvent(db, owner(a.id), event.id))).toBe("missing_required");
+
+    await admin.from("events").update({ starts_at: "2026-12-31T17:30:00Z" }).eq("id", event.id);
+    expect(await code(publishEvent(db, owner(a.id), event.id))).toBe("missing_required");
+
+    for (const block of content.blocks) if (block.type === "details") block.venue = { ar: "قاعة النيل", en: "" };
+    await saveDraft(db, owner(a.id), event.id, content, {});
+    await publishEvent(db, owner(a.id), event.id);
+    const { data } = await admin.from("events").select("published_content").eq("id", event.id).single();
+    expect(JSON.stringify(data!.published_content)).not.toContain("2027-01-02");
+  });
+
   it("succeeds after settlement and keeps the location out of the public half", async () => {
     const event = await newEvent(a.id);
     await saveDraft(db, owner(a.id), event.id, await filledContent(event.id), {});
@@ -358,7 +382,7 @@ describe("publishing", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(HostError);
       expect((error as HostError).code).toBe("missing_required");
-      expect((error as HostError).detail).toEqual({ fields: ["partner_one", "partner_two"] });
+      expect((error as HostError).detail).toEqual({ fields: ["partner_one", "partner_two", "starts_at", "venue"] });
     }
     expect(await code(publishEvent(db, owner(b.id), event.id))).toBe("forbidden");
   });

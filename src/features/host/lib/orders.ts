@@ -1,3 +1,4 @@
+import { inBatches } from "@/lib/db/batch";
 import { z } from "zod";
 import type { Actor } from "@/lib/events/access";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -112,15 +113,14 @@ export type SubmittedReference = { orderId: string; eventId: string; reference: 
 
 export async function submittedReferences(db: AdminClient, eventIds: string[]): Promise<SubmittedReference[]> {
   if (eventIds.length === 0) return [];
-  const { data, error } = await db
-    .from("audit_log")
-    .select("event_id, metadata, created_at")
-    .eq("action", REFERENCE_ACTION)
-    .in("event_id", eventIds)
-    .order("created_at");
-  if (error) throw new Error(`reference lookup failed: ${error.message}`);
+  const data = await inBatches(
+    eventIds,
+    (ids) => db.from("audit_log").select("event_id, metadata, created_at").eq("action", REFERENCE_ACTION).in("event_id", ids),
+    "reference lookup",
+  );
+  data.sort((a, b) => a.created_at.localeCompare(b.created_at));
   const out: SubmittedReference[] = [];
-  for (const row of data ?? []) {
+  for (const row of data) {
     const meta = row.metadata as { order_id?: unknown; reference?: unknown } | null;
     // Stored text is re-checked on the way out; it is shown to staff.
     const reference = referenceSchema.safeParse(meta?.reference);

@@ -3,14 +3,17 @@ import type { CSSProperties } from "react";
 import type { Locale } from "@/i18n/config";
 import { marketingMessages } from "../../messages";
 import { egp, pricing } from "../../pricing";
+import { Scrub } from "@/features/motion/Scrub";
 import { sceneStill } from "../../scenes";
 import { localHref } from "../../site";
-import { Phone } from "../phone";
+import { LayeredPhone } from "../phone";
 import { StillFrame } from "../still-frame";
 
-// The sections after the scenes. Motion here is CSS only: the columns and the
-// two blocks slide in from the reading-start side as they enter (view
-// timelines, where supported); prices and questions are still on purpose.
+// The sections after the scenes. Each carries its own scroll idea, read from
+// one `--p` per section (src/features/motion): the three stages of the event
+// light up in turn, the private part of the invitation uncovers beside the
+// statement, the two ways to make it close in from both sides, and the price
+// table draws its rules. The questions and the finale stay still.
 
 export function Lifecycle({ lang }: { lang: Locale }) {
   const t = marketingMessages(lang).lifecycle;
@@ -20,19 +23,18 @@ export function Lifecycle({ lang }: { lang: Locale }) {
         <h2 id="lifecycle-title" className="mk-h2 mk-measure">
           {t.title}
         </h2>
-        <div className="mk-lifecycle__cols">
+        <Scrub range="through" className="mk-lifecycle__cols" style={{ "--n": t.stages.length } as CSSProperties}>
           {t.stages.map((stage, index) => (
-            <div key={stage.when} className="mk-slide" style={{ "--i": index } as CSSProperties}>
-              <h3 className="mk-lifecycle__when">{stage.when}</h3>
-              <ul className="mk-lifecycle__items">
+            <div key={stage.when} className="mk-stage" style={{ "--i": index } as CSSProperties}>
+              <h3 className="mk-stage__when">{stage.when}</h3>
+              <ul className="mk-stage__items">
                 {stage.items.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
           ))}
-        </div>
-        <p className="mk-note mk-measure">{t.footnote}</p>
+        </Scrub>
       </div>
     </section>
   );
@@ -42,41 +44,43 @@ export function Privacy({ lang }: { lang: Locale }) {
   const t = marketingMessages(lang).privacy;
   return (
     <section aria-labelledby="privacy-title" className="mk-section mk-privacy">
-      <div className="mk-wrap mk-privacy__grid">
-        <div>
+      <Scrub range="enter" span={0.85} className="mk-wrap mk-privacy__grid">
+        <div className="mk-privacy__copy">
           <h2 id="privacy-title" className="mk-statement">
             {t.title}
           </h2>
           <p className="mk-privacy__body">{t.body}</p>
         </div>
-        <Phone shot="private-en" alt={t.shotAlt} className="mk-privacy__phone" />
-      </div>
+        {/* The shared-link view underneath; the personal-link view uncovers over it from the top. */}
+        <LayeredPhone
+          under={`/marketing/private-public-${lang}.webp`}
+          over={`/marketing/private-guest-${lang}.webp`}
+          alt={t.shotAlt}
+          className="mk-privacy__phone"
+          overClassName="mk-privacy__guest"
+        />
+      </Scrub>
     </section>
   );
 }
 
 export function MakeIt({ lang }: { lang: Locale }) {
   const t = marketingMessages(lang).makeIt;
-  const still = sceneStill("reveal.box");
   return (
     <section aria-labelledby="make-title" className="mk-section mk-make">
       <div className="mk-wrap">
         <h2 id="make-title" className="mk-h2">
           {t.title}
         </h2>
-        <div className="mk-make__grid">
-          <div className="mk-make__block mk-slide" style={{ "--i": 0 } as CSSProperties}>
+        <Scrub range="enter" span={0.8} className="mk-make__grid">
+          <div className="mk-make__block" data-side="start">
             <h3 className="mk-h3">{t.self.title}</h3>
             <p className="mk-make__body">{t.self.body}</p>
             <Link href={localHref(lang, "/signup")} className="mk-btn">
               {t.self.cta}
             </Link>
           </div>
-          <div className="mk-make__block mk-make__block--done mk-slide" style={{ "--i": 1 } as CSSProperties}>
-            <picture className="mk-make__image">
-              <source type="image/avif" srcSet={still.avif} />
-              <img src={still.webp} alt="" width={1920} height={1080} loading="lazy" decoding="async" />
-            </picture>
+          <div className="mk-make__block" data-side="end">
             <h3 className="mk-h3">{t.done.title}</h3>
             <p className="mk-make__body">{t.done.body}</p>
             <p className="mk-make__price">{t.done.price}</p>
@@ -84,7 +88,7 @@ export function MakeIt({ lang }: { lang: Locale }) {
               {t.done.cta}
             </Link>
           </div>
-        </div>
+        </Scrub>
       </div>
     </section>
   );
@@ -104,6 +108,7 @@ export function Prices({ lang }: { lang: Locale }) {
           {t.title}
         </h2>
         <p className="mk-lead mk-measure">{t.lead}</p>
+        <Scrub as="div" range="enter" span={0.9} className="mk-ptable__wrap">
         <table className="mk-ptable">
           <caption className="mo-sr">{t.caption}</caption>
           <thead>
@@ -116,11 +121,12 @@ export function Prices({ lang }: { lang: Locale }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <PriceRow key={row.id} row={row} unit={t.unit} recommended={row.id === "premium" ? { title: t.recommended, line: t.difference } : null} />
+            {rows.map((row, index) => (
+              <PriceRow key={row.id} index={index} row={row} unit={t.unit} recommended={row.id === "premium" ? { title: t.recommended, line: t.difference } : null} />
             ))}
           </tbody>
         </table>
+        </Scrub>
         <Link href={localHref(lang, "/pricing")} className="mk-textlink">
           {t.more}
         </Link>
@@ -129,18 +135,18 @@ export function Prices({ lang }: { lang: Locale }) {
   );
 }
 
-function PriceRow({ row, unit, recommended }: { row: { id: string; name: string; line: string; price: string }; unit: string; recommended: { title: string; line: string } | null }) {
+function PriceRow({ index, row, unit, recommended }: { index: number; row: { id: string; name: string; line: string; price: string }; unit: string; recommended: { title: string; line: string } | null }) {
   return (
     <>
       {recommended ? (
-        <tr className="mk-ptable__flag">
+        <tr className="mk-ptable__flag" style={{ "--r": index - 0.5 } as CSSProperties}>
           <th scope="rowgroup" colSpan={3}>
             <span className="mk-ptable__flag-title">{recommended.title}</span>
             <span className="mk-ptable__flag-line">{recommended.line}</span>
           </th>
         </tr>
       ) : null}
-      <tr data-plan={row.id} data-recommended={recommended ? "" : undefined}>
+      <tr data-plan={row.id} data-recommended={recommended ? "" : undefined} style={{ "--r": index } as CSSProperties}>
         <th scope="row" className="mk-ptable__name">
           {row.name}
         </th>

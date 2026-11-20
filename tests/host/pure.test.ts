@@ -146,3 +146,15 @@ describe("safeNext and the claim page", () => {
     expect(safeNext("/ar/claim?x=1", "ar")).toBe("/ar/app");
   });
 });
+
+describe("plural and digits", () => {
+  it("picks Arabic forms and normalises Arabic-Indic digits", async () => {
+    const { plural, latinDigits } = await import("@/features/host/lib/text");
+    const forms = { one: "ضيف واحد", two: "ضيفين", few: "{n} ضيوف", other: "{n} ضيف" };
+    expect(plural("ar", 1, forms)).toBe("ضيف واحد");
+    expect(plural("ar", 2, forms)).toBe("ضيفين");
+    expect(plural("ar", 5, forms)).toBe("5 ضيوف");
+    expect(plural("ar", 20, forms)).toBe("20 ضيف");
+    expect(latinDigits("٧٨٩۱۲")).toBe("78912");
+  });
+});

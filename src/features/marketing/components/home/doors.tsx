@@ -8,7 +8,9 @@ import { StillFrame } from "../still-frame";
 
 // Scene I: the walk up the garden path to the doors. Two short lines pass over
 // the approach; on the hold the headline opens out of the lit gap between the
-// doors, set on the lower door panels, with the action on the step below.
+// doors, set on the lower door panels, with the actions on the step below.
+// The actions do not scrub: they switch on at the start of the hold with a
+// short fade, so they are never half-visible while they can be pressed.
 export function Doors({ lang, scene }: { lang: Locale; scene: MarketingScene | null }) {
   const t = marketingMessages(lang).doors;
 
@@ -23,6 +25,9 @@ export function Doors({ lang, scene }: { lang: Locale; scene: MarketingScene | n
     <div className="mk-doors__action">
       <Link href={localHref(lang, "/signup")} className="mk-btn mk-btn--large">
         {t.cta}
+      </Link>
+      <Link href={localHref(lang, "/how-it-works")} className="mk-btn mk-btn--large mk-btn--over">
+        {t.how}
       </Link>
     </div>
   );
@@ -43,8 +48,8 @@ export function Doors({ lang, scene }: { lang: Locale; scene: MarketingScene | n
       manifest={scene.manifest}
       alt={t.alt}
       priority
-      scrollVh={260}
-      holdVh={80}
+      scrollVh={200}
+      holdVh={60}
       frameOverlay={doorway}
     >
       <div className="mk-approach">

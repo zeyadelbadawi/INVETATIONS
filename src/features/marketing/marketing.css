@@ -258,6 +258,16 @@
 .mk-hide-md {
   display: none;
 }
+@media (min-width: 768px) {
+  .mk-phone-only {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .mk-header__link.mk-phone-only {
+    padding-inline: 0.625rem;
+  }
+}
 @media (min-width: 640px) {
   .mk-hide-sm {
     display: inline-flex;
@@ -382,7 +392,7 @@
 .mk-footer__legal {
   padding-block: 1.5rem;
   border-top: 1px solid var(--line);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: var(--brand-ash);
 }
 
@@ -536,16 +546,31 @@
   color: var(--bone-soft);
   opacity: clamp(0, (var(--seq-hold, 0) - 0.3) / 0.25, 1);
 }
+/* The actions are not scrubbed: they switch on (0 or 1) as the hold starts and
+   fade in over 200 ms, so they are never half-transparent while they can be
+   pressed. Before that, clip-path keeps them out of hit-testing. */
 .mk-doors__action {
-  --q: clamp(0, (var(--seq-hold, 0) - 0.45) / 0.25, 1);
+  --on: clamp(0, round(up, (var(--seq-hold, 0) - 0.03) * 100, 1), 1);
   position: absolute;
   inset-inline: 0;
   bottom: clamp(1.5rem, 7cqh, 4.5rem);
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  opacity: var(--q);
-  /* Hidden from the pointer until it starts to show (clip-path also clips hit-testing). */
-  clip-path: inset(0 calc((1 - round(up, var(--q), 1)) * 50%));
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  opacity: var(--on);
+  clip-path: inset(0 calc((1 - var(--on)) * 50%));
+  transition: opacity 200ms var(--ease-out);
+}
+/* Secondary action over footage: a solid night band behind bone text. */
+.mk-btn--over {
+  background: color-mix(in oklab, var(--brand-night) 82%, transparent);
+  color: var(--brand-bone);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand-bone) 45%, transparent);
+}
+.mk-btn--over:hover {
+  background: var(--brand-night);
 }
 .mk-doors__action:focus-within {
   opacity: 1;
@@ -776,13 +801,19 @@
     grid-template-areas: "a r b";
   }
 }
+/* Team names sit on a solid night band so they read over the wood at every
+   frame; they switch on (no partial fade) and slide in from their side. */
 .mk-tug__team {
+  --on: clamp(0, round(up, var(--hq) * 100, 1), 1);
+  padding: 0.25em 0.6em;
+  border-radius: var(--radius-control);
+  background: var(--brand-night);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(1.25rem, 1rem + 1.2vw, 2rem);
   line-height: 1.2;
   white-space: nowrap;
-  opacity: var(--hq);
+  opacity: var(--on);
 }
 .mk-tug__team[data-side="start"] {
   grid-area: a;
@@ -848,7 +879,7 @@
 .mk-games__stage {
   display: flex;
   flex-direction: column;
-  padding-top: calc(var(--hdr) + 1.5rem);
+  padding-top: calc(var(--hdr) + 1.25rem);
   container-type: inline-size;
   /* clip, not hidden: focus must not scroll the stage sideways. */
   overflow: clip;
@@ -859,17 +890,26 @@
 }
 .mk-games__lead {
   margin-top: 0.5rem;
-  max-width: 40rem;
+  max-width: 44rem;
   color: var(--brand-ash);
   font-size: 1rem;
 }
+/*
+ * The row dwells on each panel, then moves to the next: with s = p × 4, panel
+ * k holds still while s runs from k to k + 0.45 and the row travels one panel
+ * over the rest of that unit (the last panel holds for its whole unit). Each
+ * panel reads its own progress --lp (0…1 over its unit) for its inner motion.
+ */
 .mk-games__row {
   --pw: 100cqw;
+  --s: calc(var(--p, 1) * 4);
+  --fl: round(down, var(--s), 1);
+  --pos: min(3, calc(var(--fl) + clamp(0, (var(--s) - var(--fl) - 0.45) / 0.55, 1)));
   flex: 1;
   display: flex;
   width: calc(4 * var(--pw));
   min-height: 0;
-  transform: translate3d(calc(var(--x-dir) * var(--p, 1) * (100% - 100cqw)), 0, 0);
+  transform: translate3d(calc(var(--x-dir) * var(--pos) / 3 * (100% - 100cqw)), 0, 0);
 }
 @media (min-width: 900px) {
   .mk-games__row {
@@ -877,109 +917,309 @@
   }
 }
 .mk-panel {
+  --lp: clamp(0, var(--s) - var(--i), 1);
+  /* Neighbours that peek in at the edges recede, so only the panel in front reads. */
+  --away: min(1, max(var(--pos) - var(--i), var(--i) - var(--pos)));
+  opacity: calc(1 - 0.8 * var(--away));
   flex: none;
   width: var(--pw);
   display: grid;
   align-content: center;
-  gap: 1.5rem;
-  padding: 1.5rem 1rem 2rem;
+  gap: 1.25rem;
+  padding: 1rem 1rem 1.5rem;
 }
 @media (min-width: 900px) {
   .mk-panel {
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     align-items: center;
     gap: clamp(2rem, 5cqw, 5rem);
     padding: 2rem clamp(2rem, 4cqw, 4rem);
-    border-inline-start: 1px solid var(--line);
   }
-  .mk-panel:first-child {
-    border-inline-start: 0;
+  /* Vote and clues put the game first, in the wider column. */
+  .mk-panel[data-kind="vote"],
+  .mk-panel[data-kind="clues"] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
   }
-  /* Each game is composed for what it asks. */
-  .mk-panel[data-kind="vote"] .mk-card,
-  .mk-panel[data-kind="clues"] .mk-card {
+  .mk-panel[data-kind="vote"] > :last-child,
+  .mk-panel[data-kind="clues"] > :last-child {
     order: -1;
-  }
-  .mk-panel[data-kind="prediction"] {
-    align-items: start;
   }
 }
 .mk-panel__name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 3.25rem);
+  font-size: clamp(1.625rem, 1.2rem + 2.2vw, 3.25rem);
   line-height: 1.15;
   color: var(--brand-lantern);
 }
 .mk-panel__body {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   max-width: 28rem;
   color: var(--bone-soft);
 }
-/* The game card as the invitation draws it: a light panel, outlined answers, the chosen one filled. */
-.mk-card {
-  width: 100%;
-  max-width: 34rem;
-  padding: 1.25rem;
-  border-radius: var(--radius-panel);
-  background: var(--brand-bone);
-  color: var(--brand-night);
-}
-@media (min-width: 900px) {
-  .mk-card {
-    padding: 1.75rem;
+@media (max-width: 899px) {
+  .mk-panel__body {
+    font-size: 1rem;
   }
 }
-.mk-card__question {
-  font-weight: 600;
-  font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
-  line-height: 1.45;
-}
-.mk-panel[data-kind="clues"] .mk-card__question {
-  font-weight: 500;
-}
-.mk-card__note {
-  margin-top: 1rem;
-  font-size: 0.8125rem;
-  color: color-mix(in oklab, var(--brand-night) 62%, var(--brand-bone));
-}
+
+/* Shared answer control. */
 .mk-answers {
   display: grid;
   gap: 0.5rem;
-  margin-top: 1rem;
-}
-.mk-answers[data-layout="grid"],
-.mk-answers[data-layout="pair"] {
-  grid-template-columns: 1fr 1fr;
 }
 .mk-answer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   min-height: 2.75rem;
   padding: 0.5rem 1rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--brand-night) 45%, var(--brand-bone));
+  border-radius: var(--radius-control);
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.3;
-  color: var(--brand-night);
+  text-align: start;
   transition:
     background-color 150ms var(--ease-out),
-    color 150ms var(--ease-out);
+    color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out);
 }
-.mk-answers[data-layout="pair"] .mk-answer {
-  min-height: 3.25rem;
+.mk-panel :focus-visible {
+  outline: 2px solid var(--brand-lantern);
+  outline-offset: 2px;
+}
+
+/* Quiz: the question with a clock that runs down as the panel holds; when it
+   runs out (or once you answer) the couple's answer is marked. */
+.mk-quiz {
+  --run: clamp(0, var(--lp) / 0.38, 1);
+  --mark: clamp(0, round(up, (var(--lp) - 0.38) * 100, 1), 1);
+  max-width: 34rem;
+}
+.mk-quiz__clock {
+  display: block;
+  height: 3px;
+  margin-bottom: 1.25rem;
+  background: var(--brand-lantern);
+  transform: scaleX(calc(1 - var(--run)));
+  transform-origin: left;
+}
+[dir="rtl"] .mk-quiz__clock {
+  transform-origin: right;
+}
+.mk-quiz__question {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.375rem, 1.1rem + 1.2vw, 2.125rem);
+  line-height: 1.3;
+}
+.mk-answers[data-kind="quiz"] {
+  margin-top: 1.25rem;
+}
+@media (min-width: 640px) {
+  .mk-answers[data-kind="quiz"] {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.mk-answers[data-kind="quiz"] .mk-answer {
+  background: var(--brand-dusk);
+  color: var(--brand-bone);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.mk-answers[data-kind="quiz"] .mk-answer:hover {
+  background: color-mix(in oklab, var(--brand-bone) 10%, var(--brand-dusk));
+}
+.mk-answers[data-kind="quiz"] .mk-answer[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--brand-bone);
+}
+.mk-quiz {
+  --shown: var(--mark);
+}
+.mk-quiz:has([data-answered]) {
+  --shown: 1;
+}
+.mk-answers[data-kind="quiz"] .mk-answer[data-marked] {
+  box-shadow: inset 0 0 0 calc(var(--shown) * 2px) var(--brand-lantern);
+}
+.mk-answer__mark {
+  flex: none;
+  font-size: 0.9375rem;
   font-weight: 600;
+  color: var(--brand-lantern);
+  opacity: var(--shown);
 }
-.mk-answer:hover {
-  background: color-mix(in oklab, var(--brand-night) 7%, transparent);
+
+/* Him or her: two big names, and the room's split filling in under them. */
+.mk-vote {
+  --fill: clamp(0, (var(--lp) - 0.05) / 0.35, 1);
+  max-width: 36rem;
 }
-.mk-answer[aria-pressed="true"] {
-  background: var(--brand-night);
-  border-color: var(--brand-night);
+.mk-vote__question {
+  font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+  font-weight: 600;
+  color: var(--bone-soft);
+}
+.mk-answers[data-kind="vote"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.mk-answers[data-kind="vote"] .mk-answer {
+  justify-content: center;
+  min-width: 0;
+  min-height: clamp(5rem, 14cqw, 8rem);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 1rem + 2cqw, 2.75rem);
+  color: var(--brand-bone);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.mk-answers[data-kind="vote"] .mk-answer:first-child {
+  color: var(--brand-twilight);
+}
+.mk-answers[data-kind="vote"] .mk-answer:last-child {
+  color: var(--brand-lantern);
+}
+.mk-answers[data-kind="vote"] .mk-answer:hover {
+  background: color-mix(in oklab, var(--brand-bone) 6%, transparent);
+}
+.mk-answers[data-kind="vote"] .mk-answer[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.mk-split {
+  margin-top: 1.25rem;
+}
+.mk-split__bar {
+  display: flex;
+  gap: 3px;
+  height: 0.625rem;
+}
+.mk-split__part {
+  flex: var(--share) 1 0;
+  transform: scaleX(var(--fill));
+}
+.mk-split__part[data-side="start"] {
+  background: var(--brand-twilight);
+  transform-origin: left;
+}
+.mk-split__part[data-side="end"] {
+  background: var(--brand-lantern);
+  transform-origin: right;
+}
+[dir="rtl"] .mk-split__part[data-side="start"] {
+  transform-origin: right;
+}
+[dir="rtl"] .mk-split__part[data-side="end"] {
+  transform-origin: left;
+}
+.mk-split__caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--bone-soft);
+  font-variant-numeric: tabular-nums;
+}
+.mk-split__caption b {
+  font-weight: 700;
   color: var(--brand-bone);
 }
-.mk-card :focus-visible {
-  outline-color: var(--brand-night);
+.mk-split__label {
+  color: var(--brand-ash);
 }
+
+/* Predictions: a guess on a scale, the number set large. */
+.mk-guess {
+  max-width: 34rem;
+}
+.mk-guess__question {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.375rem, 1.1rem + 1.2vw, 2.125rem);
+  line-height: 1.3;
+}
+.mk-slider {
+  margin-top: 1.5rem;
+}
+.mk-slider__value {
+  display: block;
+  font-size: 1.125rem;
+  color: var(--bone-soft);
+}
+.mk-slider__num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(3.5rem, 2.5rem + 4cqw, 6rem);
+  line-height: 1;
+  color: var(--brand-lantern);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.mk-slider__input {
+  display: block;
+  width: 100%;
+  height: 2.75rem;
+  margin-top: 0.75rem;
+  accent-color: var(--brand-lantern);
+  cursor: pointer;
+}
+.mk-slider__ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9375rem;
+  color: var(--brand-ash);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Clues: they arrive one by one while the panel holds, then the guest may switch. */
+.mk-clues {
+  max-width: 36rem;
+}
+.mk-clues__list {
+  counter-reset: clue;
+}
+.mk-clues__line {
+  --c-in: clamp(0, (var(--lp) - var(--c) * 0.16) / 0.14, 1);
+  counter-increment: clue;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.5rem;
+  padding-block: 0.625rem;
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.1875rem);
+  line-height: 1.5;
+  color: var(--brand-bone);
+  opacity: var(--c-in);
+  transform: translate3d(calc(var(--x-dir) * (1 - var(--c-in)) * 1.5rem), 0, 0);
+}
+.mk-clues__line::before {
+  content: counter(clue);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--brand-lantern);
+}
+.mk-clues__prompt {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+.mk-answers[data-kind="teams"] {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 0.75rem;
+}
+.mk-answers[data-kind="teams"] .mk-answer {
+  justify-content: center;
+  font-weight: 700;
+  color: var(--brand-bone);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.mk-answers[data-kind="teams"] .mk-answer[aria-pressed="true"] {
+  background: var(--brand-bone);
+  color: var(--brand-night);
+}
+
 /* Still layout: the panels stack. */
 .mk-games__pin[data-still] .mk-games__row {
   flex-direction: column;
@@ -988,8 +1228,8 @@
 }
 .mk-games__pin[data-still] .mk-panel {
   width: auto;
+  opacity: 1;
   padding-block: 3rem;
-  border-inline-start: 0;
   border-top: 1px solid var(--line);
 }
 
@@ -1000,7 +1240,7 @@
   inset-inline: 0;
   bottom: 0;
   isolation: isolate;
-  padding: 6rem 1rem clamp(2rem, 7cqh, 4.5rem);
+  padding: 6rem 1rem clamp(1.5rem, 5cqh, 3.5rem);
   text-align: center;
   opacity: clamp(0, (var(--seq-progress, 0) - 0.04) / 0.2, 1);
 }
@@ -1028,42 +1268,40 @@
   margin: 0.75rem auto 0;
   color: var(--bone-soft);
 }
-/* The list, on the stage screen, one line after another over the hold. */
-.mk-screen {
-  position: absolute;
-  left: 50%;
-  top: 15%;
-  width: min(calc(100cqw - 2rem), max(40%, 20rem));
-  translate: -50% 0;
-  text-align: center;
+/* The list, under the headline, one line after another over the first part of the hold. */
+.mk-hall__list {
+  max-width: 38rem;
+  margin: 1.25rem auto 0;
 }
-.mk-screen__line {
-  --q: clamp(0, var(--seq-hold, 0) * (var(--n) + 0.6) - var(--i), 1);
+.mk-hall__item {
+  --q: clamp(0, var(--seq-hold, 0) / 0.6 * (var(--n) + 1) - var(--i), 1);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(1.125rem, min(calc(var(--seq-fw, 100vw) * 0.019), 5.5cqw), 2rem);
-  line-height: 1.3;
+  font-size: clamp(1.0625rem, 0.95rem + 0.6vw, 1.5rem);
+  line-height: 1.35;
   color: var(--brand-bone);
   opacity: var(--q);
   transform: translate3d(0, calc((1 - var(--q)) * 0.6em), 0);
 }
-.mk-screen__line + .mk-screen__line {
-  margin-top: 0.6em;
+.mk-hall__item + .mk-hall__item {
+  margin-top: 0.4em;
 }
 
 /* ---------- Plain sections ---------- */
 
 .mk-section {
-  padding-block: clamp(5rem, 9vw, 8.5rem);
+  padding-block: clamp(3.5rem, 7vw, 6.5rem);
   overflow-x: clip;
 }
-.mk-lifecycle {
-  padding-top: clamp(6rem, 12vw, 10rem);
-}
+
+/* Before, on the day, after: one scrubbed pass over the three stages in
+   reading order. The stage --p is passing brightens and steps forward, the
+   others recede; once the pass is over all three stand at full strength
+   (which is also the state without JavaScript and under reduced motion). */
 .mk-lifecycle__cols {
   display: grid;
-  gap: 3rem;
-  margin-top: 3.5rem;
+  gap: 2.25rem;
+  margin-top: 2.5rem;
 }
 @media (min-width: 768px) {
   .mk-lifecycle__cols {
@@ -1071,48 +1309,45 @@
     gap: 2.5rem;
   }
 }
-.mk-lifecycle__when {
+.mk-stage {
+  /* Where --p stands on this stage's turn: windows from 0.22 to 0.7 of the pass. */
+  --at: calc(0.22 + var(--i) * 0.16);
+  --near: clamp(0, 1 - max(var(--p, 1) - var(--at), var(--at) - var(--p, 1)) / 0.11, 1);
+  --done: clamp(0, (var(--p, 1) - 0.74) / 0.06, 1);
+  --lit: max(var(--near), var(--done));
+  opacity: calc(0.38 + 0.62 * var(--lit));
+  transform: translate3d(calc(var(--x-dir) * (var(--lit) - 1) * -1.25rem), 0, 0);
+}
+@media (max-width: 767px) {
+  /* Stacked, each stage sits lower on the page, so its turn comes later. */
+  .mk-stage {
+    --at: calc(0.3 + var(--i) * 0.14);
+    --done: clamp(0, (var(--p, 1) - 0.66) / 0.06, 1);
+  }
+}
+.mk-stage__when {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(2rem, 1.4rem + 2.2vw, 3.25rem);
   line-height: 1.15;
   color: var(--brand-lantern);
 }
-.mk-lifecycle__items {
-  margin-top: 1.25rem;
+.mk-stage__items {
+  margin-top: 1rem;
   font-size: 1.125rem;
 }
-.mk-lifecycle__items li + li {
-  margin-top: 0.75rem;
+.mk-stage__items li + li {
+  margin-top: 0.625rem;
 }
 
-/* Columns and blocks slide in from the reading-start side as they enter. */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .mk-slide {
-      animation: mk-slide-in linear both;
-      animation-timeline: view();
-      animation-range: entry calc(var(--i, 0) * 12%) cover calc(28% + var(--i, 0) * 8%);
-    }
-  }
-}
-@keyframes mk-slide-in {
-  from {
-    opacity: 0;
-    transform: translate3d(calc(var(--x-dir) * 4rem), 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
+/* Privacy: the statement settles while the personal-link view of the same
+   invitation uncovers, from the top, over the shared-link view. */
 .mk-privacy {
   background: var(--brand-dusk);
 }
 .mk-privacy__grid {
   display: grid;
-  gap: 3rem;
+  gap: 2.5rem;
   align-items: center;
 }
 @media (min-width: 768px) {
@@ -1121,9 +1356,14 @@
     gap: clamp(3rem, 8vw, 8rem);
   }
 }
+.mk-privacy__copy {
+  --q: clamp(0, (var(--p, 1) - 0.1) / 0.5, 1);
+  opacity: calc(0.25 + 0.75 * var(--q));
+  transform: translate3d(0, calc((1 - var(--q)) * 1.5rem), 0);
+}
 .mk-statement {
   max-width: 22ch;
-  font-size: clamp(1.875rem, 1.1rem + 3vw, 3.75rem);
+  font-size: clamp(1.75rem, 1.1rem + 3vw, 3.5rem);
   line-height: 1.2;
   text-wrap: balance;
 }
@@ -1132,20 +1372,29 @@
   line-height: 1.4;
 }
 .mk-privacy__body {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   max-width: 36rem;
   font-size: 1.125rem;
   color: var(--brand-ash);
 }
 .mk-privacy__phone {
-  width: clamp(13rem, 24vw, 19rem);
+  width: clamp(11.5rem, 24vw, 19rem);
   justify-self: center;
 }
+.mk-privacy__phone img {
+  position: absolute;
+  inset: 0;
+}
+.mk-privacy__guest {
+  --u: clamp(0, (var(--p, 1) - 0.25) / 0.6, 1);
+  clip-path: inset(0 0 calc((1 - var(--u)) * 100%) 0);
+}
 
+/* Two ways to make it: the blocks close in from opposite sides. */
 .mk-make__grid {
   display: grid;
-  gap: 3.5rem;
-  margin-top: 3rem;
+  gap: 2.5rem;
+  margin-top: 2.5rem;
 }
 @media (min-width: 768px) {
   .mk-make__grid {
@@ -1155,24 +1404,22 @@
   }
 }
 .mk-make__block {
+  --q: clamp(0, var(--p, 1) / 0.9, 1);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   padding-top: 1.5rem;
   border-top: 1px solid var(--line);
+  opacity: calc(0.2 + 0.8 * var(--q));
 }
-.mk-make__image {
-  display: block;
-  width: 100%;
-  margin-bottom: 1.75rem;
+.mk-make__block[data-side="start"] {
+  transform: translate3d(calc(var(--x-dir) * (1 - var(--q)) * 18cqi), 0, 0);
 }
-.mk-make__image img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: var(--radius-panel);
-  opacity: 0.85;
+.mk-make__block[data-side="end"] {
+  transform: translate3d(calc(var(--x-dir) * (var(--q) - 1) * 18cqi), 0, 0);
+}
+.mk-make__grid {
+  container-type: inline-size;
 }
 .mk-make__body {
   margin-top: 0.75rem;
@@ -1186,26 +1433,57 @@
   color: var(--brand-lantern);
 }
 .mk-make__block .mk-btn {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
 }
 
-/* Prices: a plain table, the recommended plan marked by a heading row. */
+/* Prices: a plain table, the recommended plan marked by a heading row. The
+   rules between rows draw across in reading order with scroll; the content
+   itself stays still. */
 .mk-ptable {
   width: 100%;
-  margin-top: 3rem;
+  margin-top: 2.5rem;
   border-collapse: collapse;
 }
 .mk-ptable th,
 .mk-ptable td {
+  position: relative;
   padding: 1.25rem 0;
-  border-top: 1px solid var(--line);
   text-align: start;
   vertical-align: baseline;
 }
+.mk-ptable tbody tr {
+  --rq: clamp(0, (var(--p, 1) - 0.15 - var(--r, 0) * 0.14) / 0.3, 1);
+}
+.mk-ptable tbody tr > * {
+  --c: 0;
+}
+.mk-ptable tbody tr > :nth-child(2) {
+  --c: 1;
+}
+.mk-ptable tbody tr > :nth-child(3) {
+  --c: 2;
+}
+.mk-ptable tbody th::before,
+.mk-ptable tbody td::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleX(clamp(0, var(--rq) * 3 - var(--c), 1));
+  transform-origin: left;
+}
+[dir="rtl"] .mk-ptable tbody th::before,
+[dir="rtl"] .mk-ptable tbody td::before {
+  transform-origin: right;
+}
+.mk-ptable .mk-ptable__flag th::before {
+  transform: scaleX(var(--rq));
+}
 .mk-ptable thead th {
   padding-block: 0 0.75rem;
-  border-top: 0;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--brand-ash);
 }
@@ -1229,8 +1507,7 @@
   color: var(--brand-ash);
 }
 .mk-ptable__flag th {
-  padding-top: 2.5rem;
-  border-top: 1px solid var(--line);
+  padding-top: 2rem;
 }
 .mk-ptable__flag-title {
   display: block;
@@ -1247,8 +1524,10 @@
   color: var(--bone-soft);
 }
 .mk-ptable tr[data-recommended] > * {
-  border-top: 0;
   padding-top: 0.75rem;
+}
+.mk-ptable tr[data-recommended] > *::before {
+  display: none;
 }
 .mk-ptable tr[data-recommended] .mk-ptable__name,
 .mk-ptable tr[data-recommended] .mk-price {
@@ -1282,8 +1561,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  min-height: 4rem;
-  padding-block: 1rem;
+  min-height: 3.5rem;
+  padding-block: 0.75rem;
   font-size: 1.125rem;
   font-weight: 600;
   cursor: pointer;
@@ -1379,16 +1658,6 @@
   color: var(--bone-soft);
   padding-inline-start: 0;
 }
-.mk-compare__flag td,
-.mk-compare__flag th {
-  border-bottom: 0;
-  padding-block: 0.75rem 0;
-}
-.mk-compare__flag-cell {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--brand-lantern);
-}
 .mk-compare__plans th {
   position: sticky;
   top: var(--hdr);
@@ -1400,7 +1669,7 @@
 }
 .mk-compare__corner {
   padding-inline-start: 0 !important;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--brand-ash);
   vertical-align: bottom !important;
@@ -1421,7 +1690,7 @@
   display: block;
   margin-top: 0.5rem;
   max-width: 16rem;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 400;
   color: var(--brand-ash);
 }
@@ -1456,11 +1725,6 @@
   padding: 1.75rem 0;
   border-top: 1px solid var(--line);
 }
-.mk-plan__flag {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--brand-lantern);
-}
 .mk-plan__name {
   font-family: var(--font-display);
   font-weight: 700;
@@ -1477,7 +1741,7 @@
 }
 .mk-plan__per {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
 }
 .mk-plan__line {
   margin-top: 0.75rem;

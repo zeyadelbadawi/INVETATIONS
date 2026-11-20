@@ -1,5 +1,6 @@
 import "server-only";
 import { adminDb } from "@/lib/supabase/admin";
+import { bumpLiveVersion } from "./lib";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/lib/events/access";
 import { hidesScoreWhileOpen } from "@/lib/guest/games";
@@ -118,6 +119,7 @@ export async function setGameState(eventId: string, actor: Actor, gameId: string
   const { error } = await db.from("games").update({ state }).eq("event_id", eventId).eq("id", gameId);
   if (error) throw new Error(`game state failed: ${error.message}`);
   if (state === "closed") await awardHeldScores(eventId, gameId, game.bound.kind);
+  await bumpLiveVersion(eventId);
   await audit({ actorId: actor.userId, actorKind: actorKind(actor), action: `game.${state}`, eventId, target: gameId, grantId: actor.grantId });
   return { ok: true };
 }
@@ -172,6 +174,7 @@ export async function settleGame(eventId: string, actor: Actor, gameId: string):
     if (error) throw new Error(`settle failed: ${error.message}`);
   }
   await db.from("games").update({ state: "settled" }).eq("event_id", eventId).eq("id", gameId);
+  await bumpLiveVersion(eventId);
   await refreshScores(eventId);
   await audit({ actorId: actor.userId, actorKind: actorKind(actor), action: "game.settled", eventId, target: gameId, grantId: actor.grantId });
   return { ok: true, awarded: rows.length };

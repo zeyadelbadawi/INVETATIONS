@@ -14,7 +14,8 @@ export function GamesTrack({ count, children }: { count: number; children: React
     const index = Number(panel.dataset.panel ?? 0);
     const top = pin.getBoundingClientRect().top + window.scrollY;
     const travel = Math.max(0, pin.offsetHeight - window.innerHeight);
-    const target = Math.round(top + (count > 1 ? (travel * index) / (count - 1) : 0));
+    // The track dwells on panel i while --p * count runs from i to i + 0.45 (marketing.css): land inside that dwell.
+    const target = Math.round(top + travel * Math.min(1, (index + 0.2) / count));
     if (Math.abs(window.scrollY - target) < 2) return;
     const smooth = getSmoothScroll();
     if (smooth) smooth.scrollTo(target, { immediate: true, force: true });

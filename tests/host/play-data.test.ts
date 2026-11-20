@@ -91,7 +91,7 @@ describe("guests and wall", () => {
     const mona = players!.find((p) => p.name === "Mona")!;
 
     const listed = await loadPlayers(db, eventId);
-    expect(listed).toEqual([{ id: mona.id, name: "Mona", teamId: null, invitation: "Open link", approved: false }]);
+    expect(listed).toEqual([{ id: mona.id, name: "Mona", teamId: null, invitation: "Open link", invitationKind: "open", approved: false }]);
     expect(await loadPlayers(db, otherEventId)).toEqual([]);
 
     await admin.from("wall_posts").insert([

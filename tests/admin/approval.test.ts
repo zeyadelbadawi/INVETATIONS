@@ -8,7 +8,7 @@ import type { AdminClient } from "@/lib/supabase/admin";
 import type { Actor } from "@/lib/events/access";
 import { createEvent } from "@/features/host/lib/events";
 import { createOrder } from "@/features/host/lib/orders";
-import { approveOrder, listPendingOrders } from "@/features/admin/lib/orders";
+import { approveOrder, listPendingOrders, orderRef, queryPendingOrders } from "@/features/admin/lib/orders";
 import { createClaim } from "@/features/admin/lib/claims";
 import { createEventOnBehalf } from "@/features/admin/lib/events";
 import { createGrant } from "@/features/admin/lib/grants";
@@ -51,6 +51,21 @@ beforeAll(async () => {
   claimMaker = await makeStaff("approve-claimer", "admin");
   granted = await makeStaff("approve-granted", "support");
   support = await makeStaff("approve-support", "support");
+});
+
+describe("queue search and pages", () => {
+  it("finds an order by its short number, lists newest first and pages by 25", async () => {
+    const { order } = await heldOrder();
+    const found = await queryPendingOrders(db, approver.id, "en", "admin", { q: orderRef(order.id).toLowerCase() });
+    expect(found.orders.map((o) => o.id)).toEqual([order.id]);
+    expect(found.orders[0].planName).not.toBe("essential");
+    const all = await queryPendingOrders(db, approver.id, "en", "admin", {});
+    expect(all.orders.length).toBeLessThanOrEqual(25);
+    const times = all.orders.map((o) => o.createdAt);
+    expect([...times].sort().reverse()).toEqual(times);
+    const awaiting = await queryPendingOrders(db, approver.id, "en", "admin", { filter: "reference" });
+    expect(awaiting.orders.every((o) => o.references.length > 0)).toBe(true);
+  });
 });
 
 describe("separation of duties", () => {

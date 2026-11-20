@@ -43,6 +43,10 @@ export function SiteHeader({ lang, path, overScene }: { lang: Locale; path: Mark
           </ul>
         </nav>
         <div className="mk-header__end">
+          {/* Phones: prices stay one tap away beside the main action; wider screens have it in the nav. */}
+          <Link href={localHref(lang, "/pricing")} aria-current={path === "/pricing" ? "page" : undefined} className="mk-header__link mk-phone-only">
+            {t.nav.pricing}
+          </Link>
           <LangLink lang={lang} path={path} className="mk-header__link mk-hide-sm" />
           <Link href={localHref(lang, "/login")} className="mk-header__link mk-hide-md">
             {t.nav.login}

@@ -27,6 +27,7 @@ export default async function HowItWorksPage({ params }: PageProps<"/[lang]/how-
         <p className="mk-lead mk-measure">{t.lead}</p>
       </div>
       <PhoneSequence
+        lang={lang}
         id="steps"
         headingId="steps-title"
         heading={

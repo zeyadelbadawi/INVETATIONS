@@ -184,3 +184,61 @@ test("pricing shows the launch prices", async ({ page }) => {
   await expect(main.getByText("750", { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await expect(main.getByText("+1,000", { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
+
+test("phones show the prices link in the header without opening the menu", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "Wide screens have it in the nav.");
+  await page.goto("/ar");
+  const prices = page.locator("header").getByRole("link", { name: "الأسعار", exact: true });
+  await expect(prices).toBeVisible();
+  const box = await prices.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+});
+
+test("product screens match the page language", async ({ page }) => {
+  for (const lang of ["ar", "en"]) {
+    for (const route of ["", "/how-it-works"]) {
+      await page.goto(`/${lang}${route}`);
+      const sources = await page.locator(".mk-phone img").evaluateAll((images) => images.map((image) => image.getAttribute("src") ?? ""));
+      expect(sources.length).toBeGreaterThan(0);
+      for (const src of sources) expect(src).toMatch(new RegExp(`-${lang}\\.webp$`));
+    }
+  }
+});
+
+test("the opening actions are either hidden or fully opaque", async ({ page }) => {
+  await page.goto("/en");
+  await expect(page.locator("#top").getByRole("link", { name: "See how it works" })).toHaveCount(1);
+  const height = await page.locator("#top").evaluate((element) => (element as HTMLElement).offsetHeight);
+  const viewport = page.viewportSize()!.height;
+  for (let y = 0; y <= height - viewport; y += Math.round(viewport / 4)) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.waitForTimeout(400);
+    const opacity = Number(await page.locator("#top .mk-doors__action").evaluate((element) => getComputedStyle(element).opacity));
+    expect([0, 1]).toContain(opacity);
+  }
+});
+
+test("each game panel is fully in view for a stretch of the track", async ({ page }) => {
+  await page.goto("/ar");
+  await page.waitForTimeout(500);
+  const pin = page.locator("#games .mo-pin");
+  const { top, travel } = await pin.evaluate((element) => ({ top: element.getBoundingClientRect().top + window.scrollY, travel: (element as HTMLElement).offsetHeight - window.innerHeight }));
+  const width = page.viewportSize()!.width;
+  for (let index = 0; index < 4; index++) {
+    for (const offset of [0.05, 0.3]) {
+      await page.evaluate((y) => window.scrollTo(0, y), Math.round(top + travel * Math.min(1, (index + offset) / 4)));
+      await page.waitForTimeout(300);
+      const box = (await page.locator(`#games [data-panel="${index}"]`).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(-1);
+      expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+    }
+  }
+});
+
+test("the reveal copy makes no claim beyond what the product does", async ({ page }) => {
+  for (const lang of ["ar", "en"]) {
+    await page.goto(`/${lang}`);
+    const text = await page.locator("#reveal").innerText();
+    expect(text).not.toMatch(/us included|ولا حتى إحنا/);
+  }
+});

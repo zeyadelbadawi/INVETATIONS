@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
+import { inBatches } from "@/lib/db/batch";
 import { HostError } from "@/features/host/lib/errors";
 import { eventName } from "@/features/host/lib/display";
 import { referenceSchema, submittedReferences } from "@/features/host/lib/orders";
@@ -45,13 +46,17 @@ export async function hasConflict(db: AdminClient, staffId: string, eventId: str
 }
 
 async function involvedEvents(db: AdminClient, staffId: string, eventIds: string[]): Promise<Set<string>> {
-  const [{ data: grants }, { data: claims }, { data: created }] = await Promise.all([
-    db.from("staff_grants").select("event_id").eq("staff_id", staffId).in("event_id", eventIds),
-    db.from("event_claims").select("event_id").eq("created_by", staffId).in("event_id", eventIds),
-    db.from("audit_log").select("event_id").eq("actor_id", staffId).eq("action", "event.created_on_behalf").in("event_id", eventIds),
+  const [grants, claims, created] = await Promise.all([
+    inBatches(eventIds, (ids) => db.from("staff_grants").select("event_id").eq("staff_id", staffId).in("event_id", ids), "grant lookup"),
+    inBatches(eventIds, (ids) => db.from("event_claims").select("event_id").eq("created_by", staffId).in("event_id", ids), "claim lookup"),
+    inBatches(
+      eventIds,
+      (ids) => db.from("audit_log").select("event_id").eq("actor_id", staffId).eq("action", "event.created_on_behalf").in("event_id", ids),
+      "creator lookup",
+    ),
   ]);
   const out = new Set<string>();
-  for (const row of [...(grants ?? []), ...(claims ?? []), ...(created ?? [])]) if (row.event_id) out.add(row.event_id);
+  for (const row of [...grants, ...claims, ...created]) if (row.event_id) out.add(row.event_id);
   return out;
 }
 
@@ -74,14 +79,14 @@ export async function listPendingOrders(db: AdminClient, staffId: string, locale
   if (!orders || orders.length === 0) return [];
 
   const eventIds = [...new Set(orders.map((o) => o.event_id))];
-  const [{ data: events }, references, granted, { data: plans }] = await Promise.all([
-    db.from("events").select("id, slug, owner_id, content").in("id", eventIds),
+  const [events, references, granted, { data: plans }] = await Promise.all([
+    inBatches(eventIds, (ids) => db.from("events").select("id, slug, owner_id, content").in("id", ids), "event lookup"),
     submittedReferences(db, eventIds),
     involvedEvents(db, staffId, eventIds),
     db.from("plans").select("id, name_ar, name_en"),
   ]);
-  const byId = new Map((events ?? []).map((e) => [e.id, e]));
-  const ownerIds = [...new Set((events ?? []).map((e) => e.owner_id))];
+  const byId = new Map(events.map((e) => [e.id, e]));
+  const ownerIds = [...new Set(events.map((e) => e.owner_id))];
   const { data: emails } = ownerIds.length > 0 ? await db.rpc("staff_user_emails", { p_ids: ownerIds }) : { data: [] };
   const emailOf = new Map((emails ?? []).map((row) => [row.id, row.email]));
   const planName = new Map((plans ?? []).map((plan) => [plan.id, locale === "ar" ? plan.name_ar : plan.name_en]));

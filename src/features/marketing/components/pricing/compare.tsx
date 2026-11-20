@@ -20,14 +20,6 @@ export function PlanCompare({ lang }: { lang: Locale }) {
       <table className="mk-compare">
         <caption className="mo-sr">{t.caption}</caption>
         <thead>
-          <tr className="mk-compare__flag">
-            <td />
-            <td />
-            <td />
-            <th scope="col" className="mk-compare__flag-cell">
-              {t.recommended}
-            </th>
-          </tr>
           <tr className="mk-compare__plans">
             <th scope="col" className="mk-compare__corner">
               {t.feature}
@@ -70,7 +62,6 @@ export function PlanCompare({ lang }: { lang: Locale }) {
       <div className="mk-plans">
         {PLANS.map((plan) => (
           <section key={plan} aria-labelledby={`plan-${plan}`} className="mk-plan" data-plan={plan}>
-            {plan === "premium" ? <p className="mk-plan__flag">{t.recommended}</p> : null}
             <h2 id={`plan-${plan}`} className="mk-plan__name">
               {t.plans[plan].name}
             </h2>

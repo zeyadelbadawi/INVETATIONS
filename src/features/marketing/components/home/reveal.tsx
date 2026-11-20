@@ -42,7 +42,7 @@ export function Reveal({ lang, scene }: { lang: Locale; scene: MarketingScene | 
     );
   }
   return (
-    <ScrollScene id="reveal" className="mk-scene" source={scene.source} manifest={scene.manifest} alt={t.alt} scrollVh={220} holdVh={60}>
+    <ScrollScene id="reveal" className="mk-scene" source={scene.source} manifest={scene.manifest} alt={t.alt} scrollVh={180} holdVh={50}>
       {copy}
     </ScrollScene>
   );

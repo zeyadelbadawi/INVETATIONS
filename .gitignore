@@ -52,3 +52,4 @@ supabase/.temp
 
 /e2e/invite/.results
 /e2e/marketing/.results
+.claude/worktrees/

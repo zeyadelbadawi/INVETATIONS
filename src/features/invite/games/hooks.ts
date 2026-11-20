@@ -64,7 +64,7 @@ export function useWall(): WallData | null {
   const [tick, setTick] = useState(0);
   const slug = event.slug;
   const player = me?.player ?? null;
-  const enabled = !demo && status === "ready" && player !== null && event.status !== "cancelled";
+  const enabled = !demo && status === "ready" && player !== null && event.status !== "cancelled" && event.settings.wallEnabled;
   const playerId = player?.id ?? null;
 
   useEffect(() => {

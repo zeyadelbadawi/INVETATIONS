@@ -36,7 +36,7 @@ function toInviteEvent(event: PublicEvent): InviteEvent {
     blocks: gated ? [] : event.blocks,
     order: gated ? [] : event.order,
     preview: event.preview,
-    settings: { sharingEnabled: event.settings.sharingEnabled, rosterVisible: event.settings.rosterVisible, lockTeams: event.settings.lockTeams },
+    settings: { sharingEnabled: event.settings.sharingEnabled, rosterVisible: event.settings.rosterVisible, lockTeams: event.settings.lockTeams, wallEnabled: event.settings.wallEnabled },
     entitlements: { games: event.entitlements.games, share_cards: event.entitlements.share_cards, reveal: event.entitlements.reveal, voice: event.entitlements.voice, photos: event.entitlements.photos },
   };
 }

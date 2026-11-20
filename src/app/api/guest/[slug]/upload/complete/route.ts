@@ -11,6 +11,7 @@ const schema = z.object({ mediaId: z.uuid(), caption: z.string().trim().max(200)
 export const POST = guestWrite({ schema, requirePlayer: true, allowWhenClosed: true }, async ({ event, guest, input }) => {
   const player = guest.player!;
   const db = adminDb();
+  if (!event.settings.wallEnabled) return fail("wall_off", 403);
   if (!player.approved) return fail("not_approved", 403);
   // Only the uploader can complete it, and only once. The caps are checked
   // again under the same lock as the slot was issued with (review F4).

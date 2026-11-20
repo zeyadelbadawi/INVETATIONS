@@ -20,7 +20,7 @@ export type InviteEvent = {
   // Block ids in host order. Ids that are not in `blocks` are guest-only slots.
   order: string[];
   preview: EventContent["preview"];
-  settings: Pick<EventSettings, "sharingEnabled" | "rosterVisible" | "lockTeams">;
+  settings: Pick<EventSettings, "sharingEnabled" | "rosterVisible" | "lockTeams" | "wallEnabled">;
   entitlements: { games: boolean; share_cards: boolean; reveal: boolean; voice: boolean; photos: boolean };
 };
 

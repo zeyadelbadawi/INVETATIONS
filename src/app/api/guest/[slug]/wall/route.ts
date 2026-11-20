@@ -7,6 +7,7 @@ import { limits, withinLimit } from "@/lib/security/rate-limit";
 
 export const GET = guestRead(async ({ event, guest }) => {
   if (!guest) return fail("no_session", 401);
+  if (!event.settings.wallEnabled) return json({ posts: [] });
   return json({ posts: await readWall(event, guest) });
 });
 
@@ -14,6 +15,7 @@ const schema = z.object({ body: z.string().trim().min(1).max(600) });
 
 export const POST = guestWrite({ schema, requirePlayer: true, allowWhenClosed: true }, async ({ event, guest, input }) => {
   if (event.status === "cancelled") return fail("event_closed", 409);
+  if (!event.settings.wallEnabled) return fail("wall_off", 403);
   const player = guest.player!;
   if (!(await withinLimit(`wall:${player.id}`, limits.wallPerPlayer))) return fail("slow_down", 429);
 

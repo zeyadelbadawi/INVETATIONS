@@ -15,6 +15,7 @@ const schema = z.object({
 // for the host cannot fill the event's media quota.
 export const POST = guestWrite({ schema, requirePlayer: true, allowWhenClosed: true }, async ({ event, guest, input }) => {
   if (event.status === "cancelled") return fail("event_closed", 409);
+  if (!event.settings.wallEnabled) return fail("wall_off", 403);
   const player = guest.player!;
   if (!player.approved) return fail("not_approved", 403);
   const photo = input.purpose === "wall_photo";

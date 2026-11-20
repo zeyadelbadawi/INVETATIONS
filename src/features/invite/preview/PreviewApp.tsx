@@ -105,7 +105,7 @@ export function PreviewApp({ scenes }: { scenes: Record<string, LoadedScene> }) 
       blocks: enabled.filter((block) => !GUEST_ONLY_BLOCKS.has(block.type)),
       order: enabled.map((block) => block.id),
       preview: draft.content.preview,
-      settings: { sharingEnabled: draft.settings?.sharingEnabled ?? true, rosterVisible: draft.settings?.rosterVisible ?? true, lockTeams: draft.settings?.lockTeams ?? false },
+      settings: { sharingEnabled: draft.settings?.sharingEnabled ?? true, rosterVisible: draft.settings?.rosterVisible ?? true, lockTeams: draft.settings?.lockTeams ?? false, wallEnabled: draft.settings?.wallEnabled ?? true },
       entitlements: { games: true, share_cards: true, reveal: true, voice: true, photos: true },
     };
     const guestBlocks = enabled.filter((block) => GUEST_ONLY_BLOCKS.has(block.type));

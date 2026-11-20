@@ -114,8 +114,8 @@ for (const demo of DEMOS) {
   const template = getTemplate(demo.template, 1)!;
   const code = newCode();
   const ends = new Date(new Date(demo.startsAt).getTime() + 5 * 3_600_000).toISOString();
-  // Demo safety: no visitor names in rosters, photos seen only by the host, open link without approval.
-  const settings = { rosterVisible: false, sharingEnabled: true, openLinkApproval: false, photosHostOnly: true, rsvpDeadline: null, lockTeams: false };
+  // Demo safety: no visitor names in rosters, no wishes wall (anyone can open a demo), open link without approval.
+  const settings = { rosterVisible: false, sharingEnabled: true, openLinkApproval: false, photosHostOnly: true, wallEnabled: false, rsvpDeadline: null, lockTeams: false };
   out.push(`with e as (
   insert into public.events (owner_id, kind, slug, status, template_id, template_version, plan_id, published_version, content, published_content, theme, settings, default_locale, starts_at, ends_at)
   values (${q(owner)}, ${q(demo.kind)}, ${q(demo.slug)}, 'published', ${q(demo.template)}, 1, 'premium', 1, ${q(c)}::jsonb,

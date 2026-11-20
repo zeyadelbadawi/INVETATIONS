@@ -34,6 +34,7 @@ async function SettingsLoader({ params }: Pick<Props, "params">) {
         sharingEnabled: settings.sharingEnabled,
         openLinkApproval: settings.openLinkApproval,
         photosHostOnly: settings.photosHostOnly,
+        wallEnabled: settings.wallEnabled,
         lockTeams: settings.lockTeams,
         rsvpDeadline: isoToZoned(settings.rsvpDeadline, timezone),
       }}

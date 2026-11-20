@@ -183,6 +183,7 @@ export const settingsInputSchema = z.object({
   sharingEnabled: z.boolean(),
   openLinkApproval: z.boolean(),
   photosHostOnly: z.boolean(),
+  wallEnabled: z.boolean().default(true),
   lockTeams: z.boolean(),
   rsvpDeadline: localDateTime,
   passcode: z.discriminatedUnion("mode", [
@@ -224,6 +225,7 @@ export async function updateSettings(
     sharingEnabled: input.sharingEnabled,
     openLinkApproval: input.openLinkApproval,
     photosHostOnly: input.photosHostOnly,
+    wallEnabled: input.wallEnabled,
     lockTeams: input.lockTeams,
     rsvpDeadline,
   });

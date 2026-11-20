@@ -148,6 +148,8 @@ export const settingsSchema = z.object({
   sharingEnabled: z.boolean().default(true),
   openLinkApproval: z.boolean().default(true),
   photosHostOnly: z.boolean().default(false),
+  // The wishes wall (text, photos, voice). Off hides it and the server refuses posts.
+  wallEnabled: z.boolean().default(true),
   rsvpDeadline: isoDateTime.nullable().default(null),
   lockTeams: z.boolean().default(false),
 });

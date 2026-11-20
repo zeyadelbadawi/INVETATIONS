@@ -196,6 +196,19 @@ suite("guest API over HTTP", () => {
     expect(ok.status).toBe(200);
   });
 
+  it("with the wishes wall switched off, the server refuses posts and uploads and lists nothing", async () => {
+    const c = await publishedEvent();
+    await admin.from("events").update({ settings: { wallEnabled: false } }).eq("id", c.id);
+    const session = cookieFrom(await post(`/api/guest/${c.slug}/session`, { code: c.code }));
+    expect((await post(`/api/guest/${c.slug}/join`, { name: "Wallless", teamKey: "bride" }, { cookie: session.header })).status).toBe(200);
+    expect((await post(`/api/guest/${c.slug}/wall`, { body: "hello" }, { cookie: session.header })).status).toBe(403);
+    expect((await post(`/api/guest/${c.slug}/upload`, { purpose: "wall_photo", contentType: "image/jpeg", bytes: 1000 }, { cookie: session.header })).status).toBe(403);
+    const list = await fetch(`${BASE}/api/guest/${c.slug}/wall`, { headers: { cookie: session.header } });
+    expect(await list.json()).toEqual({ posts: [] });
+    const { count } = await admin.from("wall_posts").select("id", { count: "exact", head: true }).eq("event_id", c.id);
+    expect(count).toBe(0);
+  });
+
   it("revoking the invitation ends its sessions on the next request", async () => {
     await admin.from("invitations").update({ revoked_at: new Date().toISOString() }).eq("id", a.invitationId);
     expect((await fetch(`${BASE}/api/guest/${a.slug}/me`, { headers: { cookie: cookie.header } })).status).toBe(401);

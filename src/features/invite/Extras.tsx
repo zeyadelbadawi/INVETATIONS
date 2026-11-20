@@ -50,7 +50,7 @@ export function Extras({ demoExtras }: { demoExtras?: DemoExtras }) {
   return (
     <>
       {games && event.entitlements.games && !closed ? <GameList data={games} /> : null}
-      {wall && !closed ? <WishesWall wall={wall} /> : null}
+      {wall && event.settings.wallEnabled && !closed ? <WishesWall wall={wall} /> : null}
       {closed ? null : <Share startOpen={demoExtras?.shareOpen ?? false} />}
       {recap && eventEnded(event) ? <RecapSection recap={recap} /> : null}
     </>

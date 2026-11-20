@@ -21,13 +21,14 @@ export type SettingsValues = {
   sharingEnabled: boolean;
   openLinkApproval: boolean;
   photosHostOnly: boolean;
+  wallEnabled: boolean;
   lockTeams: boolean;
   rsvpDeadline: string;
 };
 
 type Props = { lang: Locale; eventId: string; initial: SettingsValues; hasPasscode: boolean };
 
-const TOGGLES = ["rosterVisible", "sharingEnabled", "openLinkApproval", "photosHostOnly", "lockTeams"] as const;
+const TOGGLES = ["rosterVisible", "sharingEnabled", "openLinkApproval", "wallEnabled", "photosHostOnly", "lockTeams"] as const;
 
 export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
   const t = hostMessages(lang);

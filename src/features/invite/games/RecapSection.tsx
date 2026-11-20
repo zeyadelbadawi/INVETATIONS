@@ -26,7 +26,6 @@ export function RecapSection({ recap }: { recap: RecapData }) {
         {recap.teams.map((team) => (
           <li key={team.id} className="inv-score__row" style={{ "--team": teamColor(team.color), "--fill": team.score / max } as CSSProperties}>
             <span className="inv-score__name">
-              <span className="inv-score__dot" aria-hidden="true" />
               {pick(team.name, locale)}
             </span>
             <span className="inv-score__value inv-num">{formatNumber(team.score, locale)}</span>

@@ -58,11 +58,8 @@ export function PasscodeForm() {
 
   return (
     <aside className="inv-block inv-locked inv-passcode" data-testid="passcode-card" aria-labelledby={`${inputId}-title`}>
-      <span className="inv-locked__icon" aria-hidden="true">
-        <Icon name="lock" size={20} />
-      </span>
-      <h2 id={`${inputId}-title`} className="inv-h3">
-        {t.passcode.title}
+      <h2 id={`${inputId}-title`} className="inv-h3 inv-locked__title">
+        <Icon name="lock" /> {t.passcode.title}
       </h2>
       <p className="inv-text">{t.passcode.body}</p>
       <form className="inv-form" onSubmit={submit} noValidate>
@@ -117,10 +114,9 @@ export function GuestSlot({ id, first }: { id: string; first: boolean }) {
   if (event.hasPasscode && status === "anon") return <PasscodeForm />;
   return (
     <aside className="inv-block inv-locked" data-testid="locked-card">
-      <span className="inv-locked__icon" aria-hidden="true">
-        <Icon name="lock" size={20} />
-      </span>
-      <h2 className="inv-h3">{t.locked.title}</h2>
+      <h2 className="inv-h3 inv-locked__title">
+        <Icon name="lock" /> {t.locked.title}
+      </h2>
       <p className="inv-text">{t.locked.body}</p>
     </aside>
   );

@@ -193,7 +193,7 @@ export function WishesWall({ wall }: { wall: WallData }) {
               {post.body ? <p className={post.kind === "text" ? "inv-wish__text" : "inv-text"}>{post.body}</p> : null}
               <p className="inv-wish__meta">
                 <span>{post.author}</span>
-                {post.status === "pending" ? <span className="inv-chip">{t.wall.pending}</span> : null}
+                {post.status === "pending" ? <span className="inv-status" data-state="pending">{t.wall.pending}</span> : null}
                 {!post.mine && post.status === "visible" ? (
                   <button type="button" className="inv-link inv-wish__report" onClick={() => wall.report(post.id)} disabled={demo}>
                     {t.wall.report}

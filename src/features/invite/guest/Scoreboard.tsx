@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { pick } from "@/content/schema";
 import { getMessages } from "../messages";
 import { formatNumber } from "../lib/format";
-import { Star } from "../Icon";
 import { teamColor, useInvite } from "./GuestContext";
 import { useLive } from "./Live";
 
@@ -33,7 +32,7 @@ export function Scoreboard() {
         <div className="inv-rope" style={{ "--pull": pull, "--team-start": teamColor(rows[0].team.color), "--team-end": teamColor(rows[1].team.color) } as CSSProperties} aria-hidden="true">
           <span className="inv-rope__fill" />
           <span className="inv-rope__knot">
-            <Star size={22} />
+            <span className="inv-rope__mark" />
           </span>
         </div>
       ) : null}
@@ -41,7 +40,6 @@ export function Scoreboard() {
         {rows.map((row) => (
           <li key={row.team.id} className="inv-score__row" data-mine={row.mine ? "true" : "false"} style={{ "--team": teamColor(row.team.color), "--fill": row.score / max } as CSSProperties}>
             <span className="inv-score__name">
-              <span className="inv-score__dot" aria-hidden="true" />
               {pick(row.team.name, locale)}
               {row.mine ? <span className="inv-score__you">{t.play.you}</span> : null}
             </span>

@@ -3,9 +3,10 @@
  * from five palette tokens set inline on that wrapper (--ink, --paper, --accent,
  * --accent-soft, --on-accent). No raw brand colours here.
  *
- * Structure rule: things you read are plain typeset sections separated by a
- * small star; things you do (reply, join, share) sit on a tinted panel; the
- * reveal is the one inverted stage.
+ * Structure rule: things you read are plain typeset sections, separated by
+ * space and their display-face headings; the reply is the one tinted panel;
+ * the reveal is the one inverted stage. Reading sections move once as they
+ * scroll in (scroll-driven, end of file); controls never move with scroll.
  */
 
 .inv {
@@ -24,6 +25,10 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --radius: 1.25rem;
+  --gap-section: clamp(4.25rem, 16vw, 6rem);
+  /* Horizontal travel in reading order: from the left in English, from the right in Arabic. */
+  --x-dir: -1;
+  --radius-control: 0.75rem;
 
   min-height: 100dvh;
   background: var(--paper);
@@ -37,6 +42,9 @@
 .inv[lang="ar"] {
   --font-display: var(--font-display-ar), var(--font-display-en), serif;
   line-height: 1.8;
+}
+.inv[dir="rtl"] {
+  --x-dir: 1;
 }
 .inv[data-scheme="dark"] {
   color-scheme: dark;
@@ -91,13 +99,14 @@
 .inv-h2 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.75rem, 7.5vw, 2.25rem);
-  line-height: 1.25;
-  margin: 0 0 0.75rem;
+  font-size: clamp(2.125rem, 9vw, 2.75rem);
+  line-height: 1.35;
+  margin: 0 0 1rem;
   text-wrap: balance;
 }
 .inv[lang="en"] .inv-h2 {
   font-weight: 400;
+  line-height: 1.1;
   letter-spacing: -0.01em;
 }
 .inv-h3 {
@@ -122,9 +131,14 @@
 }
 .inv-error {
   margin: 0.5rem 0 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--accent-text);
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--accent-text);
+}
+.inv-input[aria-invalid="true"] {
+  border-color: var(--accent-text);
 }
 .inv-link {
   display: inline-flex;
@@ -140,14 +154,15 @@
   text-underline-offset: 0.25em;
   cursor: pointer;
 }
-.inv-chip {
-  display: inline-block;
-  padding: 0.1rem 0.6rem;
-  border-radius: 999px;
-  background: var(--tint);
-  font-size: 0.8125rem;
+/* A real state (a game open or closed, a wish waiting for the host): words in a colour, no container. */
+.inv-status {
+  font-size: 0.875rem;
   font-weight: 600;
+  color: var(--muted);
   white-space: nowrap;
+}
+.inv-status[data-state="open"] {
+  color: var(--accent-text);
 }
 
 /* ───────────── Controls ───────────── */
@@ -159,7 +174,7 @@
   min-height: 48px;
   padding: 0.6rem 1.15rem;
   border: 1.5px solid var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -286,7 +301,7 @@ textarea.inv-input {
   min-height: 52px;
   padding: 0.6rem 1rem;
   border: 1.5px solid var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   font-weight: 600;
   text-align: center;
   line-height: 1.3;
@@ -351,13 +366,13 @@ textarea.inv-input {
   display: inline-flex;
   padding: 3px;
   border: 1.5px solid var(--ink);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
 }
 .inv-segment__btn {
   min-height: 42px;
   padding: 0.3rem 1.1rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: calc(var(--radius-control) - 3px);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -370,6 +385,14 @@ textarea.inv-input {
 }
 
 /* ───────────── Opening ───────────── */
+/*
+ * Copy over footage. Every line is placed on a calm part of the scene's last
+ * frame (registry.ts) and enters on its own window of the hold, written as
+ * calc() on --seq-hold so scrolling back reverses it. The still version sets
+ * --seq-hold to 1, so everything below is in its final state there and without
+ * JS. Legibility comes from one dark scrim per block of copy, never from
+ * text shadows.
+ */
 .inv-head {
   position: relative;
 }
@@ -377,29 +400,76 @@ textarea.inv-input {
   background: var(--scene-shade);
   color: var(--scene-fg);
 }
-.inv-scene__wash {
+.inv-scene [data-seq-stage] {
+  --hold: var(--seq-hold, 0);
+}
+
+/* The frame layer: the whole frame at cover size. --safe-* are the edges of the screen in its
+ * coordinates, inside the language switch at the top and the Details button at the bottom. */
+.inv-ov-layer {
+  --frame-h: calc(var(--seq-fw, 100cqw) / var(--aspect));
+  --off: calc((var(--frame-h) - 100cqh) * var(--fy));
+  --safe-top: calc(var(--off) + 3.5rem);
+  --safe-bottom: calc(var(--off) + 100cqh - 5.5rem);
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 95% 62% at 50% 52%, color-mix(in srgb, var(--scene-shade) 66%, transparent), transparent 78%);
-  opacity: var(--seq-hold, 0);
 }
-.inv-ov {
-  --p: clamp(0, calc((var(--seq-hold, 0) - var(--from)) / var(--span)), 1);
+
+/* One block of copy, set as a column on the calm part of the frame. */
+.inv-ov-band {
   position: absolute;
-  inset-inline-start: auto;
   left: calc(var(--x) * 1%);
-  top: calc(var(--y) * 1%);
   width: min(calc(var(--w) * 1%), 92cqw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  isolation: isolate;
+}
+.inv-ov-band[data-anchor="top"] {
+  top: max(calc(var(--y) * 1% - 0.85rem), var(--safe-top));
+  translate: -50% 0;
+}
+.inv-ov-band[data-anchor="bottom"] {
+  top: min(calc(var(--y) * 1% + 0.85rem), var(--safe-bottom));
+  translate: -50% -100%;
+}
+
+/* The scrim: a soft ellipse of the dark palette colour behind the block, sized to the real text. It opens with the hold. */
+.inv-ov-scrim {
+  --g: clamp(0, var(--hold) * 3, 1);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(145% + 6rem);
+  height: calc(100% + clamp(8rem, 24cqb, 14rem));
+  translate: -50% -50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--scene-shade) 80%, transparent) 0%,
+    color-mix(in srgb, var(--scene-shade) 74%, transparent) 52%,
+    color-mix(in srgb, var(--scene-shade) 38%, transparent) 78%,
+    transparent 100%
+  );
+  opacity: var(--g);
+  transform: scale(calc(0.82 + var(--g) * 0.18));
+  pointer-events: none;
+}
+
+.inv-ov {
+  --q: clamp(0, calc((var(--hold) - var(--from)) / var(--span)), 1);
+  /* Ease-out of the window, so a line slows as it lands. */
+  --e: calc(1 - (1 - var(--q)) * (1 - var(--q)));
+  width: 100%;
   margin: 0;
-  transform: translate(-50%, -50%) translateY(calc((1 - var(--p)) * 16px));
-  opacity: var(--p);
   color: var(--scene-fg);
   text-align: center;
   text-wrap: balance;
-  text-shadow: 0 1px 18px color-mix(in srgb, var(--scene-shade) 55%, transparent);
 }
-.inv-ov[data-on="progress"] {
-  --p: clamp(0, calc((var(--seq-progress, 0) - var(--from)) / var(--span)), 1);
+.inv-ov[data-on="progress"],
+.inv-ov-rule[data-on="progress"] {
+  --q: clamp(0, calc((var(--seq-progress, 0) - var(--from)) / var(--span)), 1);
 }
 .inv-ov[data-align="start"] {
   text-align: start;
@@ -407,27 +477,73 @@ textarea.inv-input {
 .inv-ov[data-align="end"] {
   text-align: end;
 }
-.inv-ov--eyebrow {
-  font-size: clamp(0.95rem, 4.3cqw, 1.5rem);
-  font-weight: 500;
-  line-height: 1.5;
+.inv-ov__text {
+  display: inline-block;
 }
+
+/* Opening line and date: the UI face, quiet. */
+.inv-ov--eyebrow,
+.inv-ov--subtitle {
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: clamp(1rem, 0.85rem + 0.6cqi, 1.125rem);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+/* The opening line settles down onto the names. */
+.inv-ov--eyebrow {
+  opacity: var(--e);
+  transform: translate3d(0, calc((var(--e) - 1) * 0.75rem), 0);
+}
+/* The date is uncovered from the top, like a line being written under the names. */
+.inv-ov--subtitle {
+  clip-path: inset(-0.5em -1em calc((1 - var(--e)) * (100% + 1em) - 0.5em) -1em);
+  opacity: calc(0.25 + var(--e) * 0.75);
+}
+
+/* Names: the display face, large, rising out of a mask. */
 .inv-ov--title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: calc(clamp(2.75rem, 15cqw, 7rem) * var(--fit, 1));
-  line-height: 1.2;
+  /* Ruq'ah sits small on its body, so Arabic names get a fifth more size for the same presence. */
+  font-size: calc(clamp(3.5rem, min(10.5cqi, 10cqb), 8rem) * var(--script, 1) * var(--fit, 1));
+  line-height: 1.3;
+  clip-path: inset(calc((1 - var(--e)) * (100% + 1.2em) - 0.6em) -0.4em -0.6em -0.4em);
+}
+.inv-ov--title .inv-ov__text {
+  transform: translate3d(0, calc((1 - var(--e)) * 0.3em), 0);
+}
+.inv[lang="ar"] .inv-ov--title {
+  --script: 1.14;
+  line-height: 1.25;
+}
+/* Ruq'ah descenders hang low: the date keeps clear of them. */
+.inv-ov--title + .inv-ov--subtitle {
+  margin-top: 0.3rem;
+}
+.inv[lang="ar"] .inv-ov--title + .inv-ov--subtitle {
+  margin-top: 0.7rem;
 }
 .inv[lang="en"] .inv-ov--title {
   font-weight: 400;
-  line-height: 1.05;
+  line-height: 1.04;
   letter-spacing: -0.015em;
 }
-.inv-ov--subtitle {
-  font-size: clamp(1rem, 4.6cqw, 1.6rem);
-  font-weight: 500;
-  line-height: 1.5;
+
+/* The seam between two names. It draws from the middle once both are in. */
+.inv-ov-rule {
+  --q: clamp(0, calc((var(--hold) - var(--from)) / var(--span)), 1);
+  display: block;
+  flex: none;
+  width: min(13rem, 38cqw);
+  height: 1px;
+  margin-block: 0.15rem 0.35rem;
+  background: var(--scene-fg);
+  opacity: 0.8;
+  transform: scaleX(calc(1 - (1 - var(--q)) * (1 - var(--q))));
 }
+
+/* Language switch and the guest's greeting, over a short shade at the top. */
 .inv-scene__top {
   position: absolute;
   inset-block-start: 0;
@@ -435,42 +551,53 @@ textarea.inv-input {
   display: grid;
   justify-items: center;
   gap: 0.25rem;
-  padding: max(0.9rem, env(safe-area-inset-top)) 1rem 0;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1rem 3rem;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--scene-shade) 62%, transparent), color-mix(in srgb, var(--scene-shade) 30%, transparent) 55%, transparent);
+}
+/* The greeting welcomes on the way in and gives the top of the frame to the copy on the hold. */
+[data-animated="true"] .inv-scene__top {
+  --away: clamp(0, var(--hold) * 6, 1);
+}
+.inv-scene__top {
+  --away: 0;
 }
 .inv-lang {
   justify-self: end;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--scene-shade) 45%, transparent);
+  padding: 0 0.25rem;
   color: var(--scene-fg);
   font-size: 0.9375rem;
-  font-weight: 600;
-  text-decoration: none;
-  backdrop-filter: blur(8px);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
 }
 .inv-greeting {
-  margin: 0.5rem 0 0;
-  min-height: 1.6em;
-  font-family: var(--font-display);
-  font-size: clamp(1.4rem, 6.4cqw, 2rem);
-  line-height: 1.6;
+  margin: 0.25rem 0 0;
+  min-height: 1.5em;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.5;
   color: var(--scene-fg);
-  text-shadow: 0 1px 14px color-mix(in srgb, var(--scene-shade) 60%, transparent);
   opacity: 0;
   transition: opacity 500ms ease;
 }
 .inv-greeting[data-filled="true"] {
-  opacity: 1;
+  opacity: calc(1 - var(--away));
 }
+.inv-scene__top:has(.inv-greeting[data-filled="false"]) {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--scene-shade) 45%, transparent), transparent);
+}
+
 /* A thin line that drips down: the only hint that the scene moves with the thumb. */
 .inv-scene__cue {
   position: absolute;
   inset-block-end: 6.5rem;
   left: 50%;
-  width: 1.5px;
+  width: 1px;
   height: 3rem;
   background: var(--scene-fg);
   transform-origin: top;
@@ -492,20 +619,19 @@ textarea.inv-input {
 .inv-cta {
   position: fixed;
   z-index: 20;
-  inset-block-end: max(1.1rem, env(safe-area-inset-bottom));
+  inset-block-end: max(1rem, env(safe-area-inset-bottom));
   left: 50%;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 52px;
-  padding: 0 1.4rem;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border-radius: var(--radius-control);
   background: var(--scene-fg);
   color: var(--scene-shade);
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--scene-shade) 70%, transparent);
   transform: translateX(-50%);
   transition:
     opacity 200ms ease,
@@ -524,7 +650,7 @@ textarea.inv-input {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   min-height: 86svh;
   padding: 6rem 1.25rem 7rem;
   background: var(--scene-shade);
@@ -534,15 +660,30 @@ textarea.inv-input {
 }
 .inv-plain__line {
   margin: 0;
+  font-weight: 500;
+  font-size: 1.125rem;
 }
 .inv-plain__line--title {
   font-family: var(--font-display);
-  font-size: clamp(2.75rem, 15cqw, 6rem);
+  font-size: clamp(3.5rem, 15cqi, 6rem);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
+}
+.inv[lang="en"] .inv-plain__line--title {
+  font-weight: 400;
+  line-height: 1.05;
+}
+.inv-plain__line--title + .inv-plain__line--title::before {
+  content: "";
+  display: block;
+  width: min(13rem, 38cqi);
+  height: 1px;
+  margin: 0 auto 0.75rem;
+  background: currentColor;
+  opacity: 0.8;
 }
 
-/* Splash: the monogram, revealed by a mask. */
+/* Splash: the initials rise out of a mask; the seam between them draws like the one between the names. */
 .inv-splash {
   color: var(--ink);
 }
@@ -552,23 +693,23 @@ textarea.inv-input {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 1.75rem;
+  gap: 2rem;
   color: var(--ink);
   transition: transform 600ms var(--ease-out);
 }
 [data-phase="leaving"] .inv-mono {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 .inv-mono__letters {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 1.1rem;
   direction: inherit;
 }
 .inv-mono__group {
   display: inline-flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 1.1rem;
 }
 .inv-mono__letter {
   font-family: var(--font-display);
@@ -583,9 +724,12 @@ textarea.inv-input {
   font-weight: 400;
   line-height: 1.1;
 }
-.inv-mono__star {
-  color: var(--accent);
-  animation: inv-pop 500ms var(--ease-spring) 500ms both;
+.inv-mono__seam {
+  width: 1px;
+  height: clamp(3rem, 16vw, 5rem);
+  background: var(--accent-text);
+  transform-origin: 50% 50%;
+  animation: inv-seam 700ms var(--ease-out) 420ms both;
 }
 @keyframes inv-mask {
   from {
@@ -597,20 +741,15 @@ textarea.inv-input {
     transform: none;
   }
 }
-@keyframes inv-pop {
+@keyframes inv-seam {
   from {
-    opacity: 0;
-    transform: scale(0.6) rotate(-45deg);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+    transform: scaleY(0);
   }
 }
 .inv-mono__line {
   position: relative;
   width: 5.5rem;
-  height: 2px;
+  height: 1px;
   background: var(--line);
   overflow: hidden;
 }
@@ -618,7 +757,7 @@ textarea.inv-input {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--accent);
+  background: var(--accent-text);
   transform: scaleX(var(--splash-progress, 0));
   transform-origin: 0 50%;
   transition: transform 300ms linear;
@@ -637,7 +776,7 @@ textarea.inv-input {
   background: none;
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 0.25em;
   cursor: pointer;
@@ -651,18 +790,7 @@ textarea.inv-input {
   scroll-margin-top: 0;
 }
 .inv-body > * + * {
-  margin-top: 3.75rem;
-}
-/* The star between two reading sections. */
-.inv-block + .inv-block:not(.inv-rsvp, .inv-play, .inv-share, .inv-locked, .inv-skeleton)::before,
-.inv-stage + .inv-block:not(.inv-rsvp, .inv-play, .inv-share, .inv-locked, .inv-skeleton)::before {
-  content: "";
-  display: block;
-  width: 14px;
-  height: 14px;
-  margin: -1.9rem auto 1.9rem;
-  background: var(--accent);
-  clip-path: polygon(50% 0, 64.6% 14.6%, 85.4% 14.6%, 85.4% 35.4%, 100% 50%, 85.4% 64.6%, 85.4% 85.4%, 64.6% 85.4%, 50% 100%, 35.4% 85.4%, 14.6% 85.4%, 14.6% 64.6%, 0 50%, 14.6% 35.4%, 14.6% 14.6%, 35.4% 14.6%);
+  margin-top: var(--gap-section);
 }
 .inv-block {
   position: relative;
@@ -772,39 +900,52 @@ textarea.inv-input {
 }
 
 .inv-timeline {
+  --axis: calc(4.6rem + 1rem);
+  position: relative;
   display: grid;
   gap: 0;
-  margin: 1.25rem 0 0;
+  margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
+}
+/* The day's line, under the lit part drawn by each item. */
+.inv-timeline::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.85rem 1.6rem;
+  inset-inline-start: var(--axis);
+  width: 1px;
+  background: var(--line);
 }
 .inv-timeline__item {
   position: relative;
   display: grid;
   grid-template-columns: 4.6rem 1fr;
   gap: 2.1rem;
-  padding-block-end: 1.4rem;
+  padding-block-end: 1.6rem;
 }
 .inv-timeline__item::before {
   content: "";
   position: absolute;
-  inset-block: 0.55rem -0.55rem;
-  inset-inline-start: calc(4.6rem + 1rem);
+  inset-block: 0.85rem -0.75rem;
+  inset-inline-start: var(--axis);
   width: 1px;
-  background: var(--line);
+  background: var(--accent);
+  transform-origin: top;
 }
 .inv-timeline__item:last-child::before {
   display: none;
 }
+/* The tick: a short stroke across the line at each time. */
 .inv-timeline__item::after {
   content: "";
   position: absolute;
-  inset-block-start: 0.6rem;
-  inset-inline-start: calc(4.6rem + 1rem - 4px);
-  width: 9px;
-  height: 9px;
+  inset-block-start: 0.85rem;
+  inset-inline-start: calc(var(--axis) - 0.5rem);
+  width: calc(1rem + 1px);
+  height: 2px;
+  margin-top: -0.5px;
   background: var(--accent);
-  transform: rotate(45deg);
 }
 .inv-timeline__time {
   font-size: 1.2rem;
@@ -817,6 +958,7 @@ textarea.inv-input {
 }
 .inv-timeline__title {
   font-weight: 600;
+  line-height: 1.6;
 }
 .inv-timeline__note {
   font-size: 0.9375rem;
@@ -826,8 +968,17 @@ textarea.inv-input {
 .inv-place {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   line-height: 1.5;
+}
+.inv-block--location {
+  padding: 1.5rem 1.25rem 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--accent-soft) 35%, var(--paper));
+}
+.inv-block--location .inv-h2 {
+  font-size: clamp(1.75rem, 7vw, 2.125rem);
 }
 .inv-address {
   margin: 0.25rem 0 0;
@@ -917,12 +1068,11 @@ textarea.inv-input {
 .inv-notes li::before {
   content: "";
   position: absolute;
-  inset-block-start: 0.72em;
-  inset-inline-start: 0.1rem;
-  width: 7px;
-  height: 7px;
+  inset-block-start: 0.85em;
+  inset-inline-start: 0;
+  width: 0.7rem;
+  height: 1.5px;
   background: var(--accent);
-  transform: rotate(45deg);
 }
 .inv-faq__item {
   border-block-end: 1px solid var(--line);
@@ -994,45 +1144,42 @@ textarea.inv-input {
 }
 .inv-gallery__cell {
   aspect-ratio: 1;
-  border-radius: 0.6rem;
+  border-radius: 0.5rem;
   background: var(--tint);
 }
 
 /* ───────────── Panels: things you do ───────────── */
 .inv-rsvp,
-.inv-play,
-.inv-share,
-.inv-notice,
-.inv-game,
-.inv-wall form {
+.inv-notice {
   padding: 1.6rem 1.25rem 1.5rem;
   border-radius: var(--radius);
   background: var(--tint);
 }
+.inv-game {
+  padding-block: 1.25rem 0.5rem;
+  border-block-start: 1px solid var(--line);
+}
 .inv-locked {
   display: grid;
   justify-items: center;
-  gap: 0.25rem;
-  padding: 1.75rem 1.25rem;
-  border: 1.5px dashed color-mix(in oklab, var(--ink) 40%, var(--paper));
-  border-radius: var(--radius);
+  gap: 0.35rem;
+  padding-block: 2rem;
+  border-block: 1px solid var(--line);
   text-align: center;
 }
 .inv-locked .inv-text {
   margin: 0;
   color: var(--muted);
 }
-.inv-locked__icon {
-  display: grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  margin-bottom: 0.5rem;
-  border-radius: 50%;
-  background: var(--tint);
+.inv-locked__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .inv-notice {
-  border-inline-start: 4px solid var(--accent);
+  border-inline-start: 3px solid var(--accent);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
 }
 .inv-notice .inv-text {
   margin: 0;
@@ -1069,14 +1216,8 @@ textarea.inv-input {
   gap: 0.3rem;
 }
 .inv-answer__mark {
-  display: grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-  animation: inv-pop 420ms var(--ease-spring) both;
+  display: inline-flex;
+  color: var(--accent-text);
 }
 .inv-answer__text {
   margin: 0.3rem 0 0;
@@ -1116,7 +1257,7 @@ textarea.inv-input {
   min-height: 5rem;
   padding: 0.6rem 0.4rem;
   border: 2px solid var(--team);
-  border-radius: 1rem;
+  border-radius: var(--radius-control);
   background: color-mix(in oklab, var(--team) 9%, var(--paper));
   font-family: var(--font-display);
   font-size: 1.2rem;
@@ -1131,7 +1272,6 @@ textarea.inv-input {
 .inv-team input:checked + .inv-team__name {
   background: var(--team);
   color: var(--on-team);
-  transform: scale(1.03);
 }
 .inv-team input:active + .inv-team__name {
   transform: scale(0.97);
@@ -1152,7 +1292,7 @@ textarea.inv-input {
   display: grid;
   gap: 0.1rem;
   padding: 1rem 1.1rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-control);
   background: var(--team);
   color: var(--on-team);
   animation: inv-rise 420ms var(--ease-out) both;
@@ -1180,8 +1320,8 @@ textarea.inv-input {
   justify-items: start;
   gap: 0.4rem;
   padding: 1.1rem;
-  border: 1.5px dashed var(--ink);
-  border-radius: 1rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
   background: var(--paper);
 }
 .inv-code__digits {
@@ -1197,7 +1337,7 @@ textarea.inv-input {
 }
 .inv-rope {
   position: relative;
-  height: 14px;
+  height: 12px;
   margin: 1rem 0 0.9rem;
   border-radius: 999px;
   background: var(--team-end);
@@ -1225,15 +1365,15 @@ textarea.inv-input {
 [dir="rtl"] .inv-rope__knot {
   transform: translateX(calc(var(--pull) * -100%));
 }
-.inv-rope__knot .inv-star {
+.inv-rope__mark {
   position: absolute;
-  inset-block-start: -4px;
-  inset-inline-start: -11px;
-  color: var(--ink);
-  filter: drop-shadow(0 0 0 var(--paper));
-  stroke: var(--tint);
-  stroke-width: 2.5;
-  paint-order: stroke;
+  inset-block-start: -7px;
+  inset-inline-start: -3px;
+  width: 6px;
+  height: 28px;
+  border-radius: 3px;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--paper);
 }
 .inv-score__duel {
   display: grid;
@@ -1256,24 +1396,15 @@ textarea.inv-input {
   font-weight: 600;
   line-height: 1.5;
 }
-.inv-score__dot {
-  width: 0.7rem;
-  height: 0.7rem;
-  flex: none;
-  border-radius: 50%;
-  background: var(--team);
-}
 .inv-score__you {
-  padding: 0 0.5rem;
-  border-radius: 999px;
-  background: var(--team);
-  color: var(--on-team);
-  font-size: 0.75rem;
-  line-height: 1.7;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
 }
 .inv-score__value {
   font-size: 2.6rem;
   line-height: 1.05;
+  color: color-mix(in oklab, var(--team) 72%, var(--ink));
 }
 .inv-score__players {
   font-size: 0.875rem;
@@ -1327,11 +1458,16 @@ textarea.inv-input {
   gap: 0.75rem;
   min-height: 28rem;
   padding: 2.75rem 1.25rem 2.25rem;
-  border-radius: 1.75rem;
+  border-radius: var(--radius);
   background: var(--ink);
   color: var(--paper);
   text-align: center;
   overflow: hidden;
+}
+/* Before anything happens the stage is only a question: it takes the room it needs. */
+.inv-stage[data-phase="idle"] {
+  min-height: 0;
+  padding-block: 3rem 2.75rem;
 }
 .inv-stage .inv-link,
 .inv-stage .inv-hint {
@@ -1362,7 +1498,8 @@ textarea.inv-input {
 }
 .inv-lobby__label {
   margin: 0;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 500;
 }
 .inv-lobby__clock {
   margin: 0;
@@ -1480,7 +1617,7 @@ textarea.inv-input {
   flex: 1 1 0;
   max-width: 17rem;
   aspect-ratio: 5 / 3;
-  border-radius: 1.1rem;
+  border-radius: var(--radius-control);
   background: var(--paper);
   overflow: hidden;
 }
@@ -1548,8 +1685,8 @@ textarea.inv-input {
   width: min(100%, 17rem);
   height: auto;
   margin: 1rem 0 0;
-  border-radius: 0.9rem;
-  box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--ink) 55%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
 }
 .inv-share__canvas[data-format="story"] {
   width: min(100%, 11.5rem);
@@ -1594,8 +1731,8 @@ textarea.inv-input {
 }
 .inv-clue {
   padding: 0.3rem 1rem;
-  border-radius: 0.9rem;
-  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
 }
 .inv-clue[data-locked="true"] {
   display: flex;
@@ -1608,6 +1745,10 @@ textarea.inv-input {
 }
 .inv-wall form {
   margin-top: 0.75rem;
+}
+.inv-wall .inv-actions,
+.inv-share .inv-actions {
+  margin-top: 0.25rem;
 }
 .inv-wall__clip {
   display: grid;
@@ -1677,14 +1818,13 @@ textarea.inv-input {
   display: grid;
   justify-items: center;
   gap: 0.2rem;
-  padding: 2.5rem 1.25rem max(2.5rem, env(safe-area-inset-bottom));
+  width: min(100% - 2.5rem, 32.5rem);
+  margin: var(--gap-section) auto 0;
+  padding: 2rem 0 max(2.5rem, env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--line);
   font-size: 0.9375rem;
   color: var(--muted);
   text-align: center;
-}
-.inv-foot .inv-star {
-  color: var(--accent);
-  margin-bottom: 0.5rem;
 }
 .inv-foot p {
   margin: 0;
@@ -1716,16 +1856,20 @@ textarea.inv-input {
   justify-content: center;
   width: 100%;
 }
+/* A short hairline over the title; it runs back and forth while the link is checked. */
 .inv-gate__mark {
-  color: var(--accent);
-  margin-bottom: 0.75rem;
+  display: block;
+  width: 3.5rem;
+  height: 2px;
+  margin-bottom: 1.25rem;
+  background: var(--accent-text);
 }
 .inv-gate__mark[data-busy="true"] {
-  animation: inv-turn 2.4s linear infinite;
+  animation: inv-sweep 1.3s var(--ease-out) infinite alternate;
 }
-@keyframes inv-turn {
-  to {
-    transform: rotate(90deg);
+@keyframes inv-sweep {
+  from {
+    transform: scaleX(0.15);
   }
 }
 .inv-gate__title {
@@ -1774,7 +1918,7 @@ textarea.inv-input {
 }
 .inv-keeper__pair .inv-choice span {
   min-height: 4.5rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-control);
   font-family: var(--font-display);
   font-size: 1.6rem;
 }
@@ -1816,16 +1960,13 @@ textarea.inv-input {
     animation: none;
   }
   .inv-mono__letter,
-  .inv-mono__star,
+  .inv-mono__seam,
   .inv-result,
   .inv-badge,
-  .inv-answer__mark,
+  .inv-countdown__value,
   .inv-balloons__answer {
     animation: none;
   }
-}
-.inv-gate__mark {
-  display: inline-grid;
 }
 .inv-wall__photo {
   display: block;
@@ -1874,7 +2015,6 @@ textarea.inv-input {
 }
 .inv-passcode .inv-input {
   text-align: center;
-  letter-spacing: 0.08em;
 }
 .inv-recap__top {
   display: grid;
@@ -1893,4 +2033,102 @@ textarea.inv-input {
   margin-bottom: 0.5rem;
   border-radius: 0.6rem;
   object-fit: cover;
+}
+
+/* ───────────── The clock's own motion ───────────── */
+/* Each digit that changes rolls in once (the value is the key). Not tied to scroll. */
+.inv-countdown__value {
+  animation: inv-roll 320ms var(--ease-out);
+}
+@keyframes inv-roll {
+  from {
+    opacity: 0.35;
+    transform: translateY(-0.16em);
+  }
+}
+
+/* ───────────── Reading sections, as they scroll in ───────────── */
+/*
+ * CSS scroll-driven animations on each block's own view() timeline. They live
+ * only in the stylesheet of the cached shell, so the same rules pick up blocks
+ * that arrive later from /me. Browsers without view() timelines, and visitors
+ * who ask for less motion, get the final state. Forms, team pickers, games and
+ * the reveal are never animated by scroll.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* The date and the venue settle into place. */
+    .inv-block--details .inv-date,
+    .inv-block--details .inv-venue {
+      animation: inv-settle linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 38%;
+    }
+    .inv-block--details .inv-venue {
+      animation-range: entry 40% cover 45%;
+    }
+
+    /* The day's line draws down as you read it, and each time lights up when the line reaches it. */
+    .inv-timeline__item::before {
+      animation: inv-draw linear both;
+      animation-timeline: view();
+      animation-range: cover 30% cover 55%;
+    }
+    .inv-timeline__item::after,
+    .inv-timeline__item > * {
+      animation: inv-pass linear both;
+      animation-timeline: view();
+      animation-range: cover 25% cover 40%;
+    }
+
+    /* Photos are uncovered from the bottom edge, one column a little after the other. */
+    .inv-gallery__cell {
+      animation: inv-uncover linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 90%;
+    }
+    .inv-gallery__cell:nth-child(3n + 2) {
+      animation-range: entry 15% cover 30%;
+    }
+    .inv-gallery__cell:nth-child(3n) {
+      animation-range: entry 30% cover 38%;
+    }
+
+    /* The map card comes in from the side you start reading from. */
+    .inv-block--location {
+      animation: inv-from-start linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 85%;
+    }
+  }
+}
+@keyframes inv-settle {
+  from {
+    opacity: 0.2;
+    transform: translateY(1.25rem);
+  }
+}
+@keyframes inv-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes inv-pass {
+  from {
+    opacity: 0.35;
+  }
+}
+@keyframes inv-uncover {
+  from {
+    clip-path: inset(100% 0 0 0 round 0.5rem);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 0.5rem);
+  }
+}
+@keyframes inv-from-start {
+  from {
+    opacity: 0.3;
+    transform: translateX(calc(var(--x-dir) * 3rem));
+  }
 }

@@ -26,12 +26,3 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
     </svg>
   );
 }
-
-// Eight-point star, the one ornament of the page: section breaks, the monogram, the rope knot.
-export function Star({ size = 14, className }: { size?: number; className?: string }) {
-  return (
-    <svg className={className ?? "inv-star"} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M12 0l3.5 3.5h5v5L24 12l-3.5 3.5v5h-5L12 24l-3.5-3.5h-5v-5L0 12l3.5-3.5v-5h5z" />
-    </svg>
-  );
-}

@@ -26,7 +26,9 @@ function Frame({ kind, title, intro, state, t, children }: { kind: string; title
         <h3 id={id} className="inv-h3">
           {title}
         </h3>
-        <span className="inv-chip">{stateLabel}</span>
+        <span className="inv-status" data-state={state}>
+          {stateLabel}
+        </span>
       </header>
       {intro ? <p className="inv-text">{intro}</p> : null}
       {children}

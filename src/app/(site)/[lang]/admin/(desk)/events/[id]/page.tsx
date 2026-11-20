@@ -9,7 +9,9 @@ import { adminDb } from "@/lib/supabase/admin";
 import { ClaimLinkForm, GrantForm, RevokeGrantButton, UnpaidButtons } from "@/features/admin/components/desk-forms";
 import { dateFormat, staffForPage } from "@/features/admin/components/staff-page";
 import { eventSummary } from "@/features/admin/lib/events";
+import { FlashProvider } from "@/features/admin/components/flash";
 import { listEventGrants, listGrantableStaff } from "@/features/admin/lib/grants";
+import { planNames } from "@/features/admin/lib/orders";
 import { adminMessages } from "@/features/admin/messages";
 import { PageSkeleton } from "@/features/host/components/app-header";
 import { fmt } from "@/features/host/lib/text";
@@ -32,7 +34,11 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
   const db = adminDb();
   const summary = await eventSummary(db, id, staff.role, lang);
   if (!summary) notFound();
-  const [grants, grantable] = await Promise.all([listEventGrants(db, summary.id), isAdmin ? listGrantableStaff(db) : Promise.resolve([])]);
+  const [grants, grantable, plans] = await Promise.all([
+    listEventGrants(db, summary.id),
+    isAdmin ? listGrantableStaff(db) : Promise.resolve([]),
+    planNames(db, lang),
+  ]);
   const dates = dateFormat(lang);
 
   return (
@@ -50,7 +56,7 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
           </div>
           <div>
             <dt className="text-muted">{t.plan}</dt>
-            <dd className="font-medium">{summary.planId ?? t.noPlan}</dd>
+            <dd className="font-medium">{summary.planId ? (plans.get(summary.planId) ?? summary.planId) : t.noPlan}</dd>
           </div>
           <div>
             <dt className="text-muted">{t.kind}</dt>
@@ -67,6 +73,7 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
         </dl>
       </Card>
 
+      <FlashProvider dismissLabel={a.dismiss}>
       <FormSection title={t.orders}>
         {summary.orders.length === 0 ? (
           <p className="text-sm text-muted">{t.noOrders}</p>
@@ -75,8 +82,8 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
             {summary.orders.map((order) => (
               <li key={order.id} className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge tone={order.status === "paid" ? "success" : order.status === "pending" ? "info" : "highlight"}>{order.status}</Badge>
-                  <span className="font-medium">{order.planId}</span>
+                  <Badge tone={order.status === "paid" ? "success" : order.status === "pending" ? "info" : "highlight"}>{a.orderStatus[order.status] ?? order.status}</Badge>
+                  <span className="font-medium">{plans.get(order.planId) ?? order.planId}</span>
                   <span>{fmt(a.egp, { amount: order.amountEgp })}</span>
                   <span className="text-muted">{dates.format(new Date(order.paidAt ?? order.createdAt))}</span>
                 </div>
@@ -86,6 +93,8 @@ async function Summary({ lang, params }: { lang: Locale; params: Props["params"]
           </ul>
         )}
       </FormSection>
+
+      </FlashProvider>
 
       <FormSection title={a.grants.title} lead={a.grants.lead}>
         {grants.length === 0 ? (

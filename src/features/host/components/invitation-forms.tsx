@@ -7,7 +7,7 @@ import { choiceClass, Input, Select, Textarea } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import { parseGuestLines } from "../lib/bulk";
 import type { InvitationRowInput } from "../lib/invitations";
-import { fmt, latinDigits, normalisePhone } from "../lib/text";
+import { latinDigits, normalisePhone, plural } from "../lib/text";
 import { hostMessages } from "../messages";
 
 type Kind = "personal" | "group";
@@ -38,7 +38,7 @@ function KindPicker({ lang, value, onChange, personalLinks, name }: { lang: Loca
               <input
                 type="radio"
                 name={name}
-                className="mt-1 size-4 shrink-0 accent-fg"
+                className="mt-0.5 size-5 shrink-0 accent-fg"
                 checked={value === kind}
                 disabled={locked}
                 onChange={() => onChange(kind)}
@@ -69,6 +69,8 @@ export function AddInvitationForm({ lang, teams, personalLinks, pending, onAdd }
   const sizeBad = !Number.isInteger(sizeNumber) || sizeNumber < 1 || sizeNumber > max;
   const phoneBad = phone.trim() !== "" && normalisePhone(phone) === null;
   const ready = label.trim() !== "" && !sizeBad && !phoneBad;
+  // Said next to the button, so a greyed-out button is never a mystery.
+  const why = label.trim() === "" ? i.needLabel : sizeBad ? i.needSize : phoneBad ? i.needPhone : null;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -125,10 +127,15 @@ export function AddInvitationForm({ lang, teams, personalLinks, pending, onAdd }
             </Field>
           ) : null}
         </div>
-        <div>
-          <Button type="submit" disabled={!ready || pending} aria-busy={pending}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button type="submit" disabled={!ready || pending} aria-busy={pending} aria-describedby={why ? "inv-add-why" : undefined}>
             {i.addOne}
           </Button>
+          {why ? (
+            <p id="inv-add-why" className="text-sm text-muted">
+              {why}
+            </p>
+          ) : null}
         </div>
     </form>
   );
@@ -143,6 +150,7 @@ export function BulkInvitationForm({ lang, personalLinks, pending, onAdd }: Omit
   const parsed = parseGuestLines(text, kind === "personal" ? 50 : 2000);
   const tooMany = parsed.rows.length > 500;
   const ready = parsed.rows.length > 0 && parsed.badLines.length === 0 && !tooMany;
+  const why = parsed.badLines.length > 0 ? i.bulkNeedFix : tooMany ? null : parsed.rows.length === 0 ? i.bulkNeedText : null;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -170,21 +178,25 @@ export function BulkInvitationForm({ lang, personalLinks, pending, onAdd }: Omit
           />
         </div>
         <div id="bulk-status" aria-live="polite" className="text-sm">
-          {parsed.rows.length > 0 ? <p className="text-muted">{fmt(i.bulkReady, { n: parsed.rows.length })}</p> : null}
+          {parsed.rows.length > 0 ? <p className="text-muted">{plural(lang, parsed.rows.length, i.bulkReady)}</p> : null}
           {parsed.badLines.length > 0 ? (
             <p className="text-danger">
-              {fmt(i.bulkSkipped, {
-                n: parsed.badLines.length,
+              {plural(lang, parsed.badLines.length, i.bulkSkipped, {
                 lines: parsed.badLines.slice(0, 8).join(lang === "ar" ? "، " : ", ") + (parsed.badLines.length > 8 ? "…" : ""),
               })}
             </p>
           ) : null}
           {tooMany ? <p className="text-danger">{i.bulkTooMany}</p> : null}
         </div>
-        <div>
-          <Button type="submit" variant="secondary" disabled={!ready || pending} aria-busy={pending}>
-            {fmt(i.bulkAdd, { n: parsed.rows.length })}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button type="submit" variant="secondary" disabled={!ready || pending} aria-busy={pending} aria-describedby={why ? "bulk-why" : undefined}>
+            {parsed.rows.length === 0 ? i.bulkAddNone : plural(lang, parsed.rows.length, i.bulkAdd)}
           </Button>
+          {why ? (
+            <p id="bulk-why" className="text-sm text-muted">
+              {why}
+            </p>
+          ) : null}
         </div>
     </form>
   );

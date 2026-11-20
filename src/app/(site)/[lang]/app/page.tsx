@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/app">): Pr
 function formatDate(iso: string | null, timeZone: string, lang: Locale): string | null {
   if (!iso) return null;
   try {
-    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { dateStyle: "long", timeZone }).format(new Date(iso));
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { dateStyle: "long", timeZone }).format(new Date(iso));
   } catch {
     return null;
   }
@@ -51,7 +51,7 @@ async function EventList({ lang }: { lang: Locale }) {
           {t.dashboard.emptySteps.map((step, index) => (
             <li key={step} className="flex gap-3">
               <span aria-hidden="true" className="w-5 shrink-0 font-semibold text-accent-ink tabular-nums">
-                {(index + 1).toLocaleString(lang === "ar" ? "ar-EG" : "en")}
+                {index + 1}
               </span>
               <span>{step}</span>
             </li>

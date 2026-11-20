@@ -6,6 +6,7 @@ import type { PaymentProvider } from "@/lib/payments/provider";
 import { CHECKOUT_ACTION } from "@/lib/payments/settle";
 import { auditActor, loadEventFor } from "./access";
 import { HostError } from "./errors";
+import { latinDigits } from "./text";
 
 export const REFERENCE_ACTION = "order.reference_submitted";
 const MAX_REFERENCES_PER_ORDER = 5;
@@ -78,7 +79,8 @@ export async function submitTransferReference(
   rawReference: unknown,
 ): Promise<{ orderId: string; reference: string }> {
   const event = await loadEventFor(db, actor, eventId, { ownerOnly: true });
-  const reference = referenceSchema.safeParse(rawReference);
+  // Receipts read on an Arabic phone often come back with Arabic-Indic digits.
+  const reference = referenceSchema.safeParse(typeof rawReference === "string" ? latinDigits(rawReference) : rawReference);
   if (!reference.success) throw new HostError("invalid", { field: "reference" });
 
   const { data: order } = await db

@@ -26,7 +26,7 @@ const KINDS: EventKind[] = ["wedding", "gender_reveal", "corporate"];
 // One numbered step of the form: the number sits in the margin, the question is the legend.
 function Step({ n, total, lang, title, children }: { n: number; total: number; lang: Locale; title: string; children: React.ReactNode }) {
   const t = hostMessages(lang);
-  const digit = n.toLocaleString(lang === "ar" ? "ar-EG" : "en");
+  const digit = String(n);
   return (
     <fieldset>
       <legend className="flex items-baseline gap-3 text-lg font-semibold text-fg sm:gap-4">
@@ -53,6 +53,10 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
 
   const options = templates.filter((tpl) => tpl.kind === kind);
   const ready = kind !== null && templateId !== null && name.trim().length > 0;
+  // With one look for the occasion there is nothing to pick: that step is skipped.
+  const pickLook = kind === null || options.length > 1;
+  const total = pickLook ? 3 : 2;
+  const why = kind === null ? t.create.needKind : templateId === null ? t.create.needTemplate : name.trim() === "" ? t.create.needName : null;
 
   function chooseKind(next: EventKind) {
     setKind(next);
@@ -74,11 +78,11 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-10">
-      <Step n={1} total={3} lang={lang} title={t.create.stepKind}>
+      <Step n={1} total={total} lang={lang} title={t.create.stepKind}>
         <div className="grid gap-2 sm:grid-cols-3">
           {KINDS.map((k) => (
             <label key={k} className={choiceClass}>
-              <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => chooseKind(k)} className="mt-1 size-4 shrink-0 accent-fg" />
+              <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => chooseKind(k)} className="mt-0.5 size-5 shrink-0 accent-fg" />
               <span className="flex flex-col gap-0.5">
                 <span className="font-semibold">{t.kinds[k]}</span>
                 <span className="text-sm text-muted">{t.kindHints[k]}</span>
@@ -88,8 +92,8 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
         </div>
       </Step>
 
-      {kind ? (
-        <Step n={2} total={3} lang={lang} title={t.create.stepTemplate}>
+      {kind && pickLook ? (
+        <Step n={2} total={total} lang={lang} title={t.create.stepTemplate}>
           <div className="grid gap-3 sm:grid-cols-2">
             {options.map((tpl) => (
               <label key={tpl.id} className={`${choiceClass} flex-col items-stretch gap-3`}>
@@ -123,7 +127,7 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
       ) : null}
 
       {kind && templateId ? (
-        <Step n={3} total={3} lang={lang} title={t.create.stepName}>
+        <Step n={total} total={total} lang={lang} title={t.create.stepName}>
           <div className="max-w-md">
             <Field label={t.create.nameLabel} htmlFor="event-name" hint={t.create.nameHint}>
               <Input
@@ -145,9 +149,16 @@ export function CreateEvent({ lang, templates }: { lang: Locale; templates: Temp
         <div aria-live="polite" className="w-full max-w-xl">
           {error ? <Notice tone="danger">{errorText(t, error)}</Notice> : null}
         </div>
-        <Button type="submit" disabled={!ready || pending} aria-busy={pending}>
-          {pending ? t.create.creating : t.create.submit}
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button type="submit" disabled={!ready || pending} aria-busy={pending} aria-describedby={why ? "create-why" : undefined}>
+            {pending ? t.create.creating : t.create.submit}
+          </Button>
+          {why ? (
+            <p id="create-why" className="text-sm text-muted">
+              {why}
+            </p>
+          ) : null}
+        </div>
       </div>
     </form>
   );

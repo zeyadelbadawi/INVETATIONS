@@ -59,3 +59,18 @@ export const PASSCODE_MIN_CHARS = 6;
 export function weakPasscode(value: string): boolean {
   return Array.from(value.trim()).length < PASSCODE_MIN_CHARS || /^\p{Nd}+$/u.test(value.trim());
 }
+
+// A counted phrase in both languages. Arabic needs up to six forms (0, 1, 2,
+// 3–10, 11–99, 100+); English needs two. Missing forms fall back to `other`.
+export type Plural = { zero?: string; one: string; two?: string; few?: string; many?: string; other: string };
+
+const pluralRules: Record<"ar" | "en", Intl.PluralRules> = {
+  ar: new Intl.PluralRules("ar"),
+  en: new Intl.PluralRules("en"),
+};
+
+export function plural(lang: "ar" | "en", n: number, forms: Plural, values: Record<string, string | number> = {}): string {
+  const category = pluralRules[lang].select(n) as keyof Plural;
+  const template = forms[category] ?? forms.other;
+  return fmt(template, { n, ...values });
+}

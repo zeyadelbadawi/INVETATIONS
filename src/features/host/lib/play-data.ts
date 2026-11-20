@@ -11,6 +11,7 @@ export type PlayerView = {
   name: string;
   teamId: string | null;
   invitation: string;
+  invitationKind: "personal" | "group" | "open" | null;
   approved: boolean;
 };
 
@@ -56,14 +57,16 @@ export async function loadPlayers(db: AdminClient, eventId: string): Promise<Pla
       .is("removed_at", null)
       .order("created_at")
       .limit(3000),
-    db.from("invitations").select("id, label").eq("event_id", eventId).limit(3000),
+    db.from("invitations").select("id, label, kind").eq("event_id", eventId).limit(3000),
   ]);
   const label = new Map((invitations ?? []).map((i) => [i.id, i.label]));
+  const kind = new Map((invitations ?? []).map((i) => [i.id, i.kind as PlayerView["invitationKind"]]));
   return (players ?? []).map((p) => ({
     id: p.id,
     name: p.name,
     teamId: p.team_id,
     invitation: label.get(p.invitation_id) ?? "",
+    invitationKind: kind.get(p.invitation_id) ?? null,
     approved: p.approved,
   }));
 }

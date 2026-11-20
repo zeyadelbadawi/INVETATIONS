@@ -154,7 +154,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
   const started = live.phase !== "idle" || status?.revealAt != null || status?.revealedAt != null;
   const revealed = live.phase === "revealed";
   const link = code ? `${origin}/k#${code}` : null;
-  const clock = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeStyle: "short", timeZone: timezone });
+  const clock = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { timeStyle: "short", timeZone: timezone });
 
   function issue() {
     setAsking(null);
@@ -245,7 +245,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
           <div role="alertdialog" aria-label={r.reissue} className="flex flex-wrap items-center gap-2">
             <p className="w-full text-sm">{r.reissueConfirm}</p>
             <Button variant="destructive" size="md" disabled={pending} onClick={issue}>
-              {t.common.confirm}
+              {r.reissueDo}
             </Button>
             <Button variant="secondary" size="md" onClick={() => setAsking(null)}>
               {t.common.keep}
@@ -276,7 +276,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
             <div role="alertdialog" aria-label={r.cancel} className="flex flex-wrap items-center justify-center gap-2">
               <p className="w-full text-sm">{r.cancelConfirm}</p>
               <Button variant="destructive" size="md" disabled={pending} onClick={cancel}>
-                {t.common.confirm}
+                {r.cancel}
               </Button>
               <Button variant="secondary" size="md" onClick={() => setAsking(null)}>
                 {t.common.keep}
@@ -316,7 +316,7 @@ export function RevealSection({ lang, eventId, slug, origin, timezone, entitled,
               <p className="font-medium">{r.startConfirm}</p>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={pending} onClick={start}>
-                  {t.common.confirm}
+                  {r.start}
                 </Button>
                 <Button variant="secondary" onClick={() => setAsking(null)}>
                   {t.common.keep}

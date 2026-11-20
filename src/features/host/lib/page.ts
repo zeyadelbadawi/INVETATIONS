@@ -1,6 +1,7 @@
 import "server-only";
 import type { Route } from "next";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import type { Locale } from "@/i18n/config";
 import { AccessError, requireEventAccess, requireUser, type Actor, type Capability } from "@/lib/events/access";
@@ -12,7 +13,11 @@ import { HostError } from "./errors";
 // without access to the event gets the same "not found" as a missing event, so
 // ids cannot be probed.
 
+// Both guards read the session, and the auth client checks token expiry
+// against the clock. connection() keeps that clock read at request time, out of
+// any prerendered shell (Cache Components refuses Date.now() while prerendering).
 export async function userOrLogin(lang: Locale, path: string): Promise<string> {
+  await connection();
   try {
     return await requireUser();
   } catch (error) {
@@ -23,6 +28,7 @@ export async function userOrLogin(lang: Locale, path: string): Promise<string> {
 
 export const eventForPage = cache(
   async (lang: Locale, eventId: string, capability: Capability, section: string): Promise<{ actor: Actor; event: EventRow }> => {
+    await connection();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(eventId)) notFound();
     try {
       const actor = await requireEventAccess(eventId, capability);

@@ -90,7 +90,7 @@ export function WallSection({ lang, eventId, posts, timezone }: Props) {
         return { tone: "danger", text: result.reason === "full" ? h.full : t.play.failed };
       },
     );
-  const dates = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
+  const dates = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 
   function media(post: PostView) {
     if (!post.media) return null;

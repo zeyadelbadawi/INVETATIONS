@@ -6,29 +6,37 @@ import { Notice } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
-import { latinDigits } from "@/features/host/lib/text";
+import { fmt, latinDigits } from "@/features/host/lib/text";
 import { errorText, hostMessages } from "@/features/host/messages";
 import { approveOrderAction } from "../actions";
 import { adminMessages } from "../messages";
+import { useFlash } from "./flash";
 
-export function ApproveForm({ lang, orderId }: { lang: Locale; orderId: string }) {
+export function ApproveForm({ lang, orderId, eventName }: { lang: Locale; orderId: string; eventName: string }) {
   const t = adminMessages(lang);
   const host = hostMessages(lang);
   const [reference, setReference] = useState("");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const flash = useFlash();
 
   const amountNumber = Number(latinDigits(amount));
-  const ready = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{3,63}$/.test(reference.trim()) && amount.trim() !== "" && Number.isInteger(amountNumber) && amountNumber >= 0;
+  const cleanReference = latinDigits(reference).trim();
+  const ready = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{3,63}$/.test(cleanReference) && amount.trim() !== "" && Number.isInteger(amountNumber) && amountNumber >= 0;
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!ready || pending) return;
     setMessage(null);
     startTransition(async () => {
-      const result = await approveOrderAction(orderId, reference.trim(), amountNumber);
-      setMessage(result.ok ? { tone: "success", text: t.approved } : { tone: "danger", text: errorText(host, result.error, result.detail) });
+      const result = await approveOrderAction(orderId, cleanReference, amountNumber);
+      if (result.ok) {
+        // The row leaves the queue on refresh; the confirmation stays above the list.
+        flash(fmt(t.approvedFor, { event: eventName }));
+        return;
+      }
+      setMessage({ tone: "danger", text: errorText(host, result.error, result.detail) });
     });
   }
 

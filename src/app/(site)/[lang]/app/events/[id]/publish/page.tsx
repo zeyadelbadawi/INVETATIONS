@@ -9,8 +9,9 @@ import { adminDb } from "@/lib/supabase/admin";
 import { hostDb } from "@/lib/supabase/server";
 import { getTemplate } from "@/templates/registry";
 import { PageSkeleton } from "@/features/host/components/app-header";
-import { PublishPanel, type PlanView } from "@/features/host/components/publish-panel";
-import { missingRequired } from "@/features/host/lib/events";
+import { PublishPanel, type MissingItem, type PlanView } from "@/features/host/components/publish-panel";
+import { eventName } from "@/features/host/lib/display";
+import { missingForPublish, PUBLISH_DATE, PUBLISH_VENUE } from "@/features/host/lib/events";
 import { paymentState } from "@/features/host/lib/orders";
 import { eventForPage } from "@/features/host/lib/page";
 import { hostMessages } from "@/features/host/messages";
@@ -45,20 +46,32 @@ async function PublishLoader({ params }: Pick<Props, "params">) {
     });
   }
 
+  const t = hostMessages(lang);
   const template = getTemplate(event.template_id, event.template_version);
-  const missingKeys = template ? missingRequired(template, parseContent(event.content)) : [];
-  const missing = missingKeys.map((key) => template?.fields.find((f) => f.key === key)?.label[lang] ?? key);
+  const content = parseContent(event.content);
+  const missingKeys = template ? missingForPublish(template, content, event.starts_at) : [];
+  const missing: MissingItem[] = missingKeys.map((key) =>
+    key === PUBLISH_DATE
+      ? { key, label: t.publish.missingDate, fix: "settings" }
+      : key === PUBLISH_VENUE
+        ? { key, label: t.publish.missingVenue, fix: "design" }
+        : { key, label: template?.fields.find((f) => f.key === key)?.label[lang] ?? key, fix: "design" },
+  );
+  // The owner's sign-in email: where we say payment details will be sent when no account is configured.
+  const { data: owner } = await adminDb().auth.admin.getUserById(event.owner_id);
 
   return (
     <PublishPanel
       lang={lang}
       eventId={event.id}
+      eventName={eventName(content, lang, event.slug)}
+      ownerEmail={owner?.user?.email ?? ""}
       status={event.status}
       version={event.published_version}
       address={`${appOrigin()}/i/${event.slug}`}
       plans={plans}
       paidPlanId={payment.planId}
-      pending={payment.pending ? { planId: payment.pending.planId, amountEgp: payment.pending.amountEgp, references: payment.pending.references } : null}
+      pending={payment.pending ? { id: payment.pending.id, planId: payment.pending.planId, amountEgp: payment.pending.amountEgp, references: payment.pending.references } : null}
       missing={missing}
     />
   );

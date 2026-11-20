@@ -8,6 +8,7 @@ import type { BlockType, EventContent, EventTheme } from "@/content/schema";
 import type { Locale } from "@/i18n/config";
 import type { Template } from "@/templates/types";
 import { saveDraftAction } from "../actions/events";
+import { withoutBlockDates } from "../lib/blocks";
 import type { HostErrorCode } from "../lib/errors";
 import { errorText, hostMessages } from "../messages";
 import { BlocksPanel } from "./blocks-panel";
@@ -21,6 +22,10 @@ type Props = {
   initialContent: EventContent;
   initialTheme: EventTheme;
   timezone: string;
+  // events.starts_at / ends_at: the event's date, set in Settings.
+  startsAt: string | null;
+  endsAt: string | null;
+  settingsHref: string;
   allowed: BlockType[];
 };
 
@@ -30,7 +35,7 @@ type SaveStatus = "saved" | "dirty" | "saving" | "error";
 const PREVIEW_DEBOUNCE_MS = 300;
 const AUTOSAVE_DEBOUNCE_MS = 1500;
 
-export function Editor({ lang, eventId, template, initialContent, initialTheme, timezone, allowed }: Props) {
+export function Editor({ lang, eventId, template, initialContent, initialTheme, timezone, startsAt, endsAt, settingsHref, allowed }: Props) {
   const t = hostMessages(lang);
   const [draft, setDraft] = useState<Draft>({ content: initialContent, theme: initialTheme });
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -63,9 +68,13 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
     iframe.current?.contentWindow?.postMessage(
       {
         type: "lamma:draft",
-        content: latest.current.content,
+        // The preview shows the event's own date, as the published page will.
+        content: withoutBlockDates(latest.current.content),
         theme: latest.current.theme,
         locale: latest.current.locale,
+        startsAt,
+        endsAt,
+        timezone,
         // Which template the preview should render; fixed for an event, taken from its row.
         templateId: template.id,
         templateVersion: template.version,
@@ -133,9 +142,12 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
         iframe.current.contentWindow?.postMessage(
           {
             type: "lamma:draft",
-            content: latest.current.content,
+            content: withoutBlockDates(latest.current.content),
             theme: latest.current.theme,
             locale: latest.current.locale,
+            startsAt,
+            endsAt,
+            timezone,
             templateId,
             templateVersion,
             kind,
@@ -149,7 +161,7 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
     // preview is listening, because it asks for the draft when it is ready.
     onMessage({ source: iframe.current?.contentWindow, data: { type: "lamma:preview-ready" } } as MessageEvent);
     return () => window.removeEventListener("message", onMessage);
-  }, [templateId, templateVersion, kind]);
+  }, [templateId, templateVersion, kind, startsAt, endsAt, timezone]);
 
   // Leaving with unsaved work: ask the browser to confirm, and try a last save
   // when the editor is unmounted by in-app navigation.
@@ -219,7 +231,9 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
                 <LocalizedField
                   key={field.key}
                   id={`field-${field.key}`}
-                  label={field.label[lang]}
+                  // The free-text date line is only a display override; the date itself is in Settings.
+                  label={field.key === "date_line" ? t.editor.dateLineLabel : field.label[lang]}
+                  hint={field.key === "date_line" ? t.editor.dateLineHint : undefined}
                   value={content.fields[field.key] ?? { ar: "", en: "" }}
                   max={field.maxLength}
                   required={field.required}
@@ -265,6 +279,8 @@ export function Editor({ lang, eventId, template, initialContent, initialTheme, 
                 allowed={allowed}
                 lang={lang}
                 timezone={timezone}
+                eventStart={startsAt}
+                settingsHref={settingsHref}
                 onChange={(blocks) => setContent({ ...content, blocks })}
               />
             </div>

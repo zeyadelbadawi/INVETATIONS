@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Badge, FormSection, Notice } from "@/components/ui/card";
 import type { Locale } from "@/i18n/config";
@@ -12,7 +12,7 @@ import {
 } from "../actions/invitations";
 import type { ActionResult } from "../lib/errors";
 import type { InvitationRowInput } from "../lib/invitations";
-import { fmt } from "../lib/text";
+import { fmt, plural } from "../lib/text";
 import { errorText, hostMessages } from "../messages";
 import { AddInvitationForm, BulkInvitationForm, type TeamOption } from "./invitation-forms";
 
@@ -44,7 +44,7 @@ type Props = {
 
 // A link the host can send right now. Codes exist only in this page's memory:
 // the server keeps a hash, so after a reload the host makes a new link instead.
-type FreshLink = { code: string; phone: string | null; label: string };
+type FreshLink = { code: string; phone: string | null; label: string; kind: InvitationView["kind"] };
 
 export function InvitationsManager(props: Props) {
   const { lang, eventId, slug, origin, invitations, teams, used, maxGuests, personalLinks, hasPlan, canExport } = props;
@@ -55,6 +55,16 @@ export function InvitationsManager(props: Props) {
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const freshPanel = useRef<HTMLElement>(null);
+  const freshCount = Object.keys(fresh).length;
+  const [announce, setAnnounce] = useState(0);
+
+  // New links appear at the top of the page; take the host there and to the heading.
+  useEffect(() => {
+    if (announce === 0 || !freshPanel.current) return;
+    freshPanel.current.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    freshPanel.current.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+  }, [announce]);
 
   // The code rides in the fragment, which browsers never send to a server (security rule 2).
   const linkFor = (code: string) => `${origin}/l/${slug}#${code}`;
@@ -71,11 +81,13 @@ export function InvitationsManager(props: Props) {
           resolve(false);
           return;
         }
+        // Every row of one add shares its kind (the form picks it once).
+        const kind = rows[0]?.kind ?? "group";
         setFresh((current) => ({
           ...current,
-          ...Object.fromEntries(result.created.map((c) => [c.id, { code: c.code, phone: c.phone, label: c.label }])),
+          ...Object.fromEntries(result.created.map((c) => [c.id, { code: c.code, phone: c.phone, label: c.label, kind }])),
         }));
-        setMessage({ tone: "success", text: fmt(i.created, { n: result.created.length }) });
+        setAnnounce((n) => n + 1);
         resolve(true);
       });
     });
@@ -88,7 +100,9 @@ export function InvitationsManager(props: Props) {
       const result = await regenerateInvitationAction(eventId, id);
       if (!result.ok) return fail(result);
       const { created } = result;
-      setFresh((current) => ({ ...current, [created.id]: { code: created.code, phone: created.phone, label: created.label } }));
+      const kind = invitations.find((inv) => inv.id === created.id)?.kind ?? "group";
+      setFresh((current) => ({ ...current, [created.id]: { code: created.code, phone: created.phone, label: created.label, kind } }));
+      setAnnounce((n) => n + 1);
     });
   }
 
@@ -126,6 +140,14 @@ export function InvitationsManager(props: Props) {
     });
   }
 
+  // Personal links greet the household by the name on their invitation; group
+  // and open links are shared by many people, so they get a greeting without a name.
+  function whatsappHref(link: FreshLink, url: string) {
+    const greeting = link.kind === "personal" ? fmt(i.whatsappMessage, { name: link.label }) : i.whatsappMessageOpen;
+    return `https://wa.me/${(link.phone ?? "").replace(/^\+/, "")}?text=${encodeURIComponent(`${greeting} ${url}`)}`;
+  }
+  const labelOf = (inv: { kind: InvitationView["kind"]; label: string }) => (inv.kind === "open" ? i.kinds.open : inv.label);
+
   const share = maxGuests === null ? null : Math.min(1, used / Math.max(1, maxGuests));
 
   return (
@@ -149,6 +171,48 @@ export function InvitationsManager(props: Props) {
       <div aria-live="polite" className="empty:-mb-10">
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       </div>
+
+      {freshCount > 0 ? (
+        // New links stay here, at the top, until the host says they are done:
+        // their codes exist only in this page's memory.
+        <section ref={freshPanel} aria-labelledby="fresh-title" className="scroll-mt-20 rounded-panel border-2 border-fg bg-raised">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-4 sm:px-6">
+            <div className="min-w-0 max-w-prose">
+              <h2 id="fresh-title" tabIndex={-1} className="text-lg font-semibold outline-none">
+                {plural(lang, freshCount, i.freshTitle)}
+              </h2>
+              <p className="mt-1 text-sm text-muted">{i.freshLead}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setFresh({})}>
+              {i.freshDone}
+            </Button>
+          </div>
+          <ul className="divide-y divide-line">
+            {Object.entries(fresh).map(([id, link]) => {
+              const url = linkFor(link.code);
+              return (
+                <li key={id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <div className="min-w-0">
+                    <p className="font-semibold [overflow-wrap:anywhere]">{labelOf(link)}</p>
+                    <p dir="ltr" className="truncate text-start text-sm text-muted">
+                      {url}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <a href={whatsappHref(link, url)} target="_blank" rel="noopener noreferrer" className={buttonClass("primary", "sm")}>
+                      {i.whatsapp}
+                      <span className="sr-only">: {labelOf(link)}</span>
+                    </a>
+                    <Button variant="secondary" size="sm" onClick={() => copy(id, url)}>
+                      <span aria-live="polite">{copied === id ? i.copied : i.copy}</span>
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <FormSection id="inv-add" title={i.addTitle}>
         <AddInvitationForm lang={lang} teams={teams} personalLinks={personalLinks} pending={pending} onAdd={add} />
@@ -181,16 +245,15 @@ export function InvitationsManager(props: Props) {
           <ul className="divide-y divide-line">
             {invitations.map((inv) => {
               const link = fresh[inv.id] && !inv.revoked ? fresh[inv.id] : null;
-              const url = link ? linkFor(link.code) : null;
               const asking = confirming?.id === inv.id ? confirming.what : null;
               return (
-                <li key={inv.id} className={`flex flex-col gap-3 px-4 py-4 sm:px-5 ${url ? "bg-primary/[0.07]" : ""}`}>
+                <li key={inv.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                     <div className="min-w-0 flex-1">
-                      <h3 className={`font-semibold [overflow-wrap:anywhere] ${inv.revoked ? "text-muted line-through" : ""}`}>{inv.label}</h3>
+                      <h3 className={`font-semibold [overflow-wrap:anywhere] ${inv.revoked ? "text-muted line-through" : ""}`}>{labelOf(inv)}</h3>
                       <p className="text-sm text-muted tabular-nums">
-                        {i.kinds[inv.kind]}
-                        {inv.kind === "open" ? null : <> · {fmt(i.seatsOf, { n: inv.seats })}</>}
+                        {inv.kind === "open" ? i.kindHints.open : i.kinds[inv.kind]}
+                        {inv.kind === "open" ? null : <> · {plural(lang, inv.seats, i.seatsOf)}</>}
                         {inv.side ? <> · {inv.side}</> : null}
                         {inv.phone ? (
                           <>
@@ -207,25 +270,6 @@ export function InvitationsManager(props: Props) {
                     )}
                   </div>
 
-                  {url && link ? (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-sm font-medium">{i.linkReady}</p>
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={`https://wa.me/${(link.phone ?? "").replace(/^\+/, "")}?text=${encodeURIComponent(`${fmt(i.whatsappMessage, { name: link.label })} ${url}`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={buttonClass("primary", "sm")}
-                        >
-                          {i.whatsapp}
-                        </a>
-                        <Button variant="secondary" size="sm" onClick={() => copy(inv.id, url)}>
-                          <span aria-live="polite">{copied === inv.id ? i.copied : i.copy}</span>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-
                   {inv.revoked ? null : asking ? (
                     <div role="alertdialog" aria-label={asking === "revoke" ? i.revokeConfirm : i.regenerateConfirm} className="flex flex-wrap items-center gap-2">
                       <p className="w-full text-sm font-medium">{asking === "revoke" ? i.revokeConfirm : i.regenerateConfirm}</p>
@@ -235,7 +279,7 @@ export function InvitationsManager(props: Props) {
                         disabled={pending}
                         onClick={() => (asking === "revoke" ? revoke(inv.id) : regenerate(inv.id))}
                       >
-                        {t.common.confirm}
+                        {asking === "revoke" ? i.revoke : i.regenerateDo}
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => setConfirming(null)}>
                         {t.common.keep}
@@ -245,12 +289,12 @@ export function InvitationsManager(props: Props) {
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" size="sm" disabled={pending} onClick={() => setConfirming({ id: inv.id, what: "regenerate" })}>
                         {link ? i.regenerate : i.regenerateToSend}
-                        <span className="sr-only">: {inv.label}</span>
+                        <span className="sr-only">: {labelOf(inv)}</span>
                       </Button>
                       {inv.kind === "open" ? null : (
                         <Button variant="dangerText" size="sm" disabled={pending} onClick={() => setConfirming({ id: inv.id, what: "revoke" })}>
                           {i.revoke}
-                          <span className="sr-only">: {inv.label}</span>
+                          <span className="sr-only">: {labelOf(inv)}</span>
                         </Button>
                       )}
                     </div>

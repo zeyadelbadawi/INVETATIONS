@@ -1,6 +1,7 @@
 import type { Route } from "next";
 import { notFound, redirect } from "next/navigation";
 import { lang as rootLang } from "next/root-params";
+import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { isLocale, type Locale } from "@/i18n/config";
 import { AccessError, requireStaff } from "@/lib/events/access";
@@ -13,6 +14,8 @@ import { hostMessages } from "@/features/host/messages";
 // factor (security O1). This sends people to the right place; every page and
 // action below still checks role and aal2 itself (requireStaffSession).
 async function StaffGate({ lang, children }: { lang: Locale; children: ReactNode }) {
+  // The session check reads the clock; keep it at request time (Cache Components).
+  await connection();
   try {
     await requireStaff(["admin", "support", "designer"]);
   } catch (error) {

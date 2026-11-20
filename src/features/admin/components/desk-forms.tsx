@@ -19,6 +19,7 @@ import {
 import { hostMessages } from "@/features/host/messages";
 import { adminMessages } from "../messages";
 import { useAdminAction, type Feedback } from "./use-admin-action";
+import { useFlash } from "./flash";
 
 // Kept in step with GRANTABLE_CAPABILITIES (lib/grants.ts); the server refuses anything else.
 const CAPABILITIES = ["view", "edit_content", "manage_invitations", "manage_play", "moderate"] as const;
@@ -256,6 +257,7 @@ export function UnpaidButtons({ lang, orderId }: { lang: Locale; orderId: string
   const keep = hostMessages(lang).common.keep;
   const { act, pending, feedback } = useAdminAction(lang);
   const [asking, setAsking] = useState<"refunded" | "disputed" | null>(null);
+  const flash = useFlash();
   return (
     <div className="flex flex-col gap-2">
       {asking ? (
@@ -268,7 +270,14 @@ export function UnpaidButtons({ lang, orderId }: { lang: Locale; orderId: string
             onClick={() => {
               const status = asking;
               setAsking(null);
-              act(() => markOrderUnpaidAction(orderId, status), () => t.refunded);
+              act(
+                () => markOrderUnpaidAction(orderId, status),
+                () => {
+                  // These buttons disappear with the refresh; the page-level notice keeps the confirmation.
+                  flash(`${adminMessages(lang).orderStatus[status]}: ${t.refunded}`);
+                  return null;
+                },
+              );
             }}
           >
             {asking === "refunded" ? t.refund : t.dispute}

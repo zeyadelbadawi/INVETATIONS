@@ -9,7 +9,7 @@ import type { Locale } from "@/i18n/config";
 import { updateSettingsAction } from "../actions/events";
 import type { ActionResult } from "../lib/errors";
 import { weakPasscode } from "../lib/text";
-import { TIMEZONES } from "../lib/time";
+import { displayDateTime, TIMEZONES, zonedToIso } from "../lib/time";
 import { errorText, hostMessages } from "../messages";
 
 export type SettingsValues = {
@@ -42,6 +42,17 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
     setValues((v) => ({ ...v, [key]: value }));
     setResult(null);
   };
+  // Native date fields follow the browser's own locale (often mm/dd/yyyy); the
+  // line under each one reads the value back in the host's language.
+  const readout = (local: string) => (local === "" ? null : displayDateTime(zonedToIso(local, values.timezone), values.timezone, lang));
+  const dateReadout = (id: string, local: string) => {
+    const text = readout(local);
+    return text ? (
+      <p id={`${id}-readout`} aria-live="polite" className="text-sm font-medium text-fg">
+        {text}
+      </p>
+    ) : null;
+  };
   const endsBeforeStart = values.startsAt !== "" && values.endsAt !== "" && values.endsAt < values.startsAt;
   const passcodeShort = passcodeMode === "set" && weakPasscode(passcode);
   const hints: Partial<Record<(typeof TOGGLES)[number], string>> = {
@@ -69,26 +80,37 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
     <form onSubmit={submit} className="flex w-full max-w-5xl flex-col gap-10">
       <FormSection id="settings-when" title={s.whenTitle}>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label={s.startsAt} htmlFor="starts-at">
-            <Input id="starts-at" type="datetime-local" dir="ltr" value={values.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
+          <Field label={s.startsAt} htmlFor="starts-at" hint={s.startsHint}>
+            <Input
+              id="starts-at"
+              type="datetime-local"
+              lang={lang}
+              dir="ltr"
+              value={values.startsAt}
+              aria-describedby="starts-at-readout starts-at-hint"
+              onChange={(e) => set("startsAt", e.target.value)}
+            />
+            {dateReadout("starts-at", values.startsAt)}
           </Field>
           <Field label={s.endsAt} htmlFor="ends-at" error={endsBeforeStart ? s.endsBeforeStart : null}>
             <Input
               id="ends-at"
               type="datetime-local"
+              lang={lang}
               dir="ltr"
               value={values.endsAt}
               min={values.startsAt || undefined}
               aria-invalid={endsBeforeStart}
-              aria-describedby={endsBeforeStart ? "ends-at-error" : undefined}
+              aria-describedby={endsBeforeStart ? "ends-at-readout ends-at-error" : "ends-at-readout"}
               onChange={(e) => set("endsAt", e.target.value)}
             />
+            {dateReadout("ends-at", values.endsAt)}
           </Field>
           <Field label={s.timezone} htmlFor="timezone">
-            <Select id="timezone" dir="ltr" value={values.timezone} onChange={(e) => set("timezone", e.target.value)}>
+            <Select id="timezone" value={values.timezone} onChange={(e) => set("timezone", e.target.value)}>
               {TIMEZONES.map((zone) => (
                 <option key={zone} value={zone}>
-                  {zone.replace("_", " ")}
+                  {s.zones[zone]}
                 </option>
               ))}
             </Select>
@@ -113,11 +135,13 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
             <Input
               id="rsvp-deadline"
               type="datetime-local"
+              lang={lang}
               dir="ltr"
               value={values.rsvpDeadline}
-              aria-describedby="rsvp-deadline-hint"
+              aria-describedby="rsvp-deadline-readout rsvp-deadline-hint"
               onChange={(e) => set("rsvpDeadline", e.target.value)}
             />
+            {dateReadout("rsvp-deadline", values.rsvpDeadline)}
           </Field>
         </div>
       </FormSection>
@@ -130,7 +154,7 @@ export function SettingsForm({ lang, eventId, initial, hasPasscode }: Props) {
               <input
                 type="radio"
                 name="passcode-mode"
-                className="size-5 accent-fg"
+                className="size-6 accent-fg"
                 checked={passcodeMode === mode}
                 onChange={() => setPasscodeMode(mode)}
               />

@@ -32,7 +32,7 @@ const has = (value: Localized | undefined, locale: Locale) => pick(value, locale
 export function isEmptyBlock(block: Block, locale: Locale, event: Pick<InviteEvent, "startsAt">): boolean {
   switch (block.type) {
     case "details":
-      return !(block.startsAt ?? event.startsAt) && !has(block.venue, locale) && !has(block.city, locale);
+      return !(event.startsAt ?? block.startsAt) && !has(block.venue, locale) && !has(block.city, locale);
     case "countdown":
       return false; // decided by the caller, which knows the start time
     case "programme":
@@ -60,9 +60,13 @@ export function isEmptyBlock(block: Block, locale: Locale, event: Pick<InviteEve
   }
 }
 
+// The event's start is events.starts_at, set in the host's Settings. A date
+// left inside an older "Date and place" section is only a fallback for events
+// that have no start yet (publishing now requires one and drops block dates).
 export function eventStart(event: Pick<InviteEvent, "startsAt" | "blocks">, extra: Block[] = []): string | null {
+  if (event.startsAt) return event.startsAt;
   for (const block of [...event.blocks, ...extra]) if (block.type === "details" && block.startsAt) return block.startsAt;
-  return event.startsAt;
+  return null;
 }
 
 export function eventTitle(event: Pick<InviteEvent, "fields" | "preview">, titleFields: string[], locale: Locale, joiner: string): string {

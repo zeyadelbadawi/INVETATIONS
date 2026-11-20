@@ -8,12 +8,12 @@ import { ContactForm, DressCodeForm, PeopleForm } from "./people-contact";
 import { ProgrammeForm } from "./programme";
 import { CountdownForm, FamiliesForm, FaqForm, GalleryForm, NotesForm, QuoteForm, StoryForm } from "./text-blocks";
 
-type Props = { block: Block; onChange: (block: Block) => void; lang: Locale; timezone: string };
+type Props = { block: Block; onChange: (block: Block) => void; lang: Locale; timezone: string; eventStart: string | null; settingsHref: string };
 
 // One form per block type in src/content/schema.ts. The switch is exhaustive:
 // a new block type fails the build here until it has a form.
-export function BlockForm({ block, onChange, lang, timezone }: Props) {
-  const shared = { onChange, lang, timezone };
+export function BlockForm({ block, onChange, lang, timezone, eventStart, settingsHref }: Props) {
+  const shared = { onChange, lang, timezone, eventStart, settingsHref };
   switch (block.type) {
     case "details":
       return <DetailsForm block={block} {...shared} />;

@@ -173,7 +173,7 @@ export function GamesSection({ lang, eventId, games, entitled, isOwner, timezone
                           );
                         }}
                       >
-                        {t.common.confirm}
+                        {g.settle}
                       </Button>
                       <Button variant="secondary" size="md" onClick={() => setSettling(null)}>
                         {t.common.keep}

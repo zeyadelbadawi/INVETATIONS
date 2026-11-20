@@ -17,9 +17,11 @@ type Props = {
   allowed: BlockType[];
   lang: Locale;
   timezone: string;
+  eventStart: string | null;
+  settingsHref: string;
 };
 
-export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props) {
+export function BlocksPanel({ blocks, onChange, allowed, lang, timezone, eventStart, settingsHref }: Props) {
   const t = hostMessages(lang);
   const [open, setOpen] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props
                 <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
-                    className="size-5 shrink-0 accent-fg"
+                    className="size-6 shrink-0 accent-fg"
                     checked={block.enabled}
                     onChange={(e) => onChange(blocks.map((b) => (b.id === block.id ? { ...b, enabled: e.target.checked } : b)))}
                   />
@@ -94,6 +96,8 @@ export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props
                     block={block}
                     lang={lang}
                     timezone={timezone}
+                    eventStart={eventStart}
+                    settingsHref={settingsHref}
                     onChange={(next) => onChange(blocks.map((b) => (b.id === block.id ? next : b)))}
                   />
                   <div className="border-t border-line pt-4">
@@ -109,7 +113,7 @@ export function BlocksPanel({ blocks, onChange, allowed, lang, timezone }: Props
                             setOpen(null);
                           }}
                         >
-                          {t.common.confirm}
+                          {t.editor.removeSection}
                         </Button>
                         <Button variant="secondary" size="sm" onClick={() => setRemoving(null)}>
                           {t.common.keep}

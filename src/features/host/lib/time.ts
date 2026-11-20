@@ -61,3 +61,25 @@ export function isoToZoned(iso: string | null | undefined, timeZone: string): st
   const pad = (n: number, width = 2) => String(n).padStart(width, "0");
   return `${pad(p.year, 4)}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
 }
+
+// How a date reads in the host's language, whatever the browser's own locale
+// (a native date field follows the browser, so a readout sits next to it).
+// Latin digits in both languages, like every other number in the app.
+export function displayDateTime(iso: string | null | undefined, timeZone: string, lang: "ar" | "en"): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG-u-nu-latn" : "en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone,
+    }).format(date);
+  } catch {
+    return null;
+  }
+}

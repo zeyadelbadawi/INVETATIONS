@@ -11,6 +11,7 @@ import { listTemplates } from "@/templates/registry";
 import { OnBehalfForm, type TemplateOption } from "@/features/admin/components/desk-forms";
 import { dateFormat, staffForPage } from "@/features/admin/components/staff-page";
 import { searchEvents } from "@/features/admin/lib/events";
+import { planNames } from "@/features/admin/lib/orders";
 import { adminMessages } from "@/features/admin/messages";
 import { PageSkeleton } from "@/features/host/components/app-header";
 import { hostMessages } from "@/features/host/messages";
@@ -35,7 +36,7 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
   let body = null;
   if (q.length > 0 && q.length < 3) body = <p className="text-muted">{t.tooShort}</p>;
   else if (q.length >= 3) {
-    const hits = await searchEvents(adminDb(), q, staff.role);
+    const [hits, plans] = await Promise.all([searchEvents(adminDb(), q, staff.role), planNames(adminDb(), lang)]);
     const dates = dateFormat(lang);
     body =
       hits.length === 0 ? (
@@ -54,7 +55,7 @@ async function Results({ lang, searchParams }: { lang: Locale; searchParams: Pro
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4">
                     <Badge>{host.statuses[hit.status as keyof typeof host.statuses] ?? hit.status}</Badge>
-                    <Badge tone={hit.planId ? "success" : "info"}>{hit.planId ?? t.noPlan}</Badge>
+                    <Badge tone={hit.planId ? "success" : "info"}>{hit.planId ? (plans.get(hit.planId) ?? hit.planId) : t.noPlan}</Badge>
                   </div>
                 </div>
                 <Link href={`/${lang}/admin/events/${hit.id}` as Route} className={buttonClass("secondary", "sm")}>

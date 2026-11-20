@@ -1,8 +1,11 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
+import { brand } from "@/config/brand";
 import { Badge, FormSection, Notice } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -10,7 +13,7 @@ import type { Locale } from "@/i18n/config";
 import { cancelEventAction, postponeEventAction, publishEventAction } from "../actions/events";
 import { cardCheckoutAvailableAction, createOrderAction, orderStatusAction, startCardCheckoutAction, submitReferenceAction } from "../actions/orders";
 import type { ActionResult } from "../lib/errors";
-import { fmt } from "../lib/text";
+import { fmt, latinDigits } from "../lib/text";
 import { errorText, hostMessages } from "../messages";
 import { paymentMessages } from "../messages-payments";
 
@@ -25,19 +28,39 @@ export type PlanView = {
   features: ("personal_links" | "games" | "share_cards" | "voice" | "photos" | "reveal")[];
 };
 
+export type MissingItem = { key: string; label: string; fix: "settings" | "design" | null };
+
 type Props = {
   lang: Locale;
   eventId: string;
+  eventName: string;
+  // Where the owner's account email is; the honest fallback when no payment account is configured.
+  ownerEmail: string;
   status: string;
   version: number;
   address: string;
   plans: PlanView[];
   paidPlanId: string | null;
-  pending: { planId: string; amountEgp: number; references: string[] } | null;
-  missing: string[];
+  pending: { id: string; planId: string; amountEgp: number; references: string[] } | null;
+  missing: MissingItem[];
 };
 
-export function PublishPanel({ lang, eventId, status, version, address, plans, paidPlanId, pending, missing }: Props) {
+// Manual transfer accounts and the support number come from src/config/brand.ts;
+// empty values are not shown.
+const payTo: { key: "instapay" | "wallet"; value: string }[] = (
+  [
+    { key: "instapay", value: brand.payments.instapay as string },
+    { key: "wallet", value: brand.payments.wallet as string },
+  ] as const
+).filter((row) => row.value.trim() !== "");
+const supportDigits = (brand.supportWhatsApp as string).replace(/\D/g, "");
+
+// A short, readable order number the host can quote on WhatsApp; staff can search by it.
+export function orderRef(orderId: string): string {
+  return orderId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+export function PublishPanel({ lang, eventId, eventName, ownerEmail, status, version, address, plans, paidPlanId, pending, missing }: Props) {
   const t = hostMessages(lang);
   const p = t.publish;
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
@@ -117,17 +140,26 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
 
   const paidPlan = plans.find((plan) => plan.id === paidPlanId) ?? null;
   const canPublish = paidPlanId !== null && missing.length === 0 && (status === "draft" || status === "published");
-  const [copied, setCopied] = useState(false);
-  async function copyAddress() {
+  const [copied, setCopied] = useState<string | null>(null);
+  async function copyText(key: string, text: string) {
     try {
-      await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied((current) => (current === key ? null : current)), 2500);
     } catch {
       setMessage({ tone: "danger", text: t.errors.unknown });
     }
   }
-  const referenceOk = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{3,63}$/.test(reference.trim());
+  // Receipts read on an Arabic phone often show Arabic-Indic digits; the
+  // server applies the same normalisation.
+  const cleanReference = latinDigits(reference).trim();
+  const referenceOk = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{3,63}$/.test(cleanReference);
+  // Checked when the field is left or the form is sent, never while typing.
+  const [referenceTouched, setReferenceTouched] = useState(false);
+  const [referenceTried, setReferenceTried] = useState(false);
+  const referenceError =
+    cleanReference === "" ? (referenceTried ? p.referenceNeeded : null) : (referenceTouched || referenceTried) && !referenceOk ? p.referenceInvalid : null;
+  const base = `/${lang}/app/events/${eventId}`;
 
   function act<T extends object>(action: () => Promise<ActionResult<T>>, done?: (result: { ok: true } & T) => string | null) {
     setMessage(null);
@@ -233,43 +265,107 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
             </div>
           ) : null}
           <h3 className="text-lg font-semibold tabular-nums">{fmt(p.payTitle, { amount: pending.amountEgp })}</h3>
-          <p className="mt-2 max-w-prose">{p.payInstructions}</p>
+          <p className="mt-1 text-sm text-muted">
+            {/* Isolation marks keep the Latin order number readable inside Arabic text. */}
+            {fmt(p.orderRef, { ref: `\u2068${orderRef(pending.id)}\u2069` })}
+          </p>
+          {payTo.length > 0 ? (
+            <>
+              <p className="mt-4 max-w-prose">{p.payTo}</p>
+              <dl className="mt-3 flex max-w-xl flex-col divide-y divide-line rounded-control border border-line">
+                {payTo.map((row) => (
+                  <div key={row.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
+                    <dt className="text-sm text-muted">{p[row.key]}</dt>
+                    <dd className="flex min-w-0 items-center gap-2">
+                      <bdi dir="ltr" className="font-mono text-[1.0625rem] font-semibold [overflow-wrap:anywhere]">
+                        {row.value}
+                      </bdi>
+                      <Button variant="ghost" size="sm" onClick={() => copyText(row.key, row.value)}>
+                        <span aria-live="polite">{copied === row.key ? p.copiedValue : p.copyValue}</span>
+                        <span className="sr-only">: {p[row.key]}</span>
+                      </Button>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 max-w-prose">{p.payThen}</p>
+            </>
+          ) : (
+            <p className="mt-4 max-w-prose">
+              {/* No account configured yet: say plainly how the details will reach the host. */}
+              {p.payNoAccounts.split("{email}").map((part, index) =>
+                index === 0 ? (
+                  part
+                ) : (
+                  <span key={index}>
+                    <bdi dir="ltr" className="font-medium [overflow-wrap:anywhere]">
+                      {ownerEmail}
+                    </bdi>
+                    {part}
+                  </span>
+                ),
+              )}
+            </p>
+          )}
           <p className="mt-2 max-w-prose text-sm text-muted">{p.payNote}</p>
+          {supportDigits ? (
+            <a
+              href={`https://wa.me/${supportDigits}?text=${encodeURIComponent(
+                fmt(p.whatsappUsText, {
+                  plan: plans.find((plan) => plan.id === pending.planId)?.name ?? pending.planId,
+                  event: eventName,
+                  ref: orderRef(pending.id),
+                }),
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonClass("secondary", "md", "mt-4")}
+            >
+              {p.whatsappUs}
+            </a>
+          ) : null}
           {pending.references.length > 0 ? (
             <Notice tone="success" className="mt-4">
               {/* Isolation marks keep the Latin reference readable inside Arabic text. */}
-              {fmt(p.referenceSent, { reference: `⁨${pending.references[pending.references.length - 1]}⁩` })}
+              {fmt(p.referenceSent, { reference: `\u2068${pending.references[pending.references.length - 1]}\u2069` })}
             </Notice>
           ) : null}
           <form
-            className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end"
+            className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start"
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
+              setReferenceTried(true);
               if (!referenceOk || busy) return;
               act(
-                () => submitReferenceAction(eventId, reference.trim()),
+                () => submitReferenceAction(eventId, cleanReference),
                 () => {
                   setReference("");
+                  setReferenceTouched(false);
+                  setReferenceTried(false);
                   return null;
                 },
               );
             }}
           >
             <div className="min-w-0 flex-1 sm:max-w-sm">
-              <Field label={p.reference} htmlFor="transfer-reference" hint={p.referenceHint}>
+              <Field label={p.reference} htmlFor="transfer-reference" hint={p.referenceHint} error={referenceError}>
                 <Input
                   id="transfer-reference"
                   dir="ltr"
                   value={reference}
                   maxLength={64}
                   autoComplete="off"
-                  aria-describedby="transfer-reference-hint"
+                  inputMode="text"
+                  aria-invalid={referenceError !== null}
+                  aria-describedby={referenceError ? "transfer-reference-hint transfer-reference-error" : "transfer-reference-hint"}
                   onChange={(e) => setReference(e.target.value)}
+                  onBlur={() => setReferenceTouched(true)}
                 />
               </Field>
             </div>
-            <div className="sm:mb-7">
-              <Button type="submit" disabled={!referenceOk || busy} aria-busy={busy}>
+            <div className="flex flex-col gap-1 sm:mt-7">
+              <Button type="submit" disabled={busy} aria-busy={busy}>
                 {p.submitReference}
               </Button>
             </div>
@@ -282,9 +378,28 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
         <ul className="mt-2 flex flex-col gap-2">
           <li className="flex items-start gap-2">
             {check(missing.length === 0)}
-            <span className={missing.length > 0 ? "text-danger" : ""}>
-              {missing.length > 0 ? fmt(p.missing, { fields: missing.join(lang === "ar" ? "، " : ", ") }) : p.ready}
-            </span>
+            {missing.length > 0 ? (
+              <div className="text-danger">
+                <p>{p.missing}</p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {missing.map((item) => (
+                    <li key={item.key} className="flex flex-wrap items-baseline gap-x-3">
+                      <span>{item.label}</span>
+                      {item.fix ? (
+                        <Link
+                          href={`${base}/${item.fix === "settings" ? "settings" : "edit"}` as Route}
+                          className="text-sm font-medium text-accent-ink underline underline-offset-4 hover:text-fg"
+                        >
+                          {item.fix === "settings" ? p.fixInSettings : p.fixInDesign}
+                        </Link>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <span>{p.ready}</span>
+            )}
           </li>
           <li className="flex items-start gap-2">
             {check(paidPlanId !== null)}
@@ -306,22 +421,30 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
         </div>
         {version > 0 ? (
           <div className="mt-6 border-t border-line pt-5">
-            <p className="text-sm font-medium text-muted">{p.liveAt}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <a
-                href={address}
-                target="_blank"
-                rel="noopener noreferrer"
-                dir="ltr"
-                className="break-all font-medium text-accent-ink underline underline-offset-4 hover:text-fg"
-              >
-                {address}
-              </a>
-              <Button variant="secondary" size="sm" onClick={copyAddress}>
-                <span aria-live="polite">{copied ? t.invitations.copied : t.invitations.copy}</span>
-              </Button>
+            {/* Guests get the invitation from their own links; that is the next step, not the public address. */}
+            <h3 className="text-lg font-semibold">{p.shareTitle}</h3>
+            <p className="mt-1 max-w-prose text-muted">{p.shareLead}</p>
+            <Link href={`${base}/invitations` as Route} className={buttonClass("primary", "md", "mt-4")}>
+              {p.shareAction}
+            </Link>
+            <div className="mt-6 max-w-prose">
+              <p className="text-sm font-medium">{p.liveAt}</p>
+              <p className="mt-1 text-sm text-muted">{p.liveNote}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <a
+                  href={address}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  dir="ltr"
+                  className="break-all text-sm text-muted underline underline-offset-4 hover:text-fg"
+                >
+                  {address}
+                </a>
+                <Button variant="ghost" size="sm" onClick={() => copyText("address", address)}>
+                  <span aria-live="polite">{copied === "address" ? t.invitations.copied : p.copyValue}</span>
+                </Button>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-muted">{p.liveNote}</p>
           </div>
         ) : null}
       </FormSection>
@@ -341,7 +464,7 @@ export function PublishPanel({ lang, eventId, status, version, address, plans, p
                   act(() => (which === "postpone" ? postponeEventAction(eventId) : cancelEventAction(eventId)));
                 }}
               >
-                {t.common.confirm}
+                {asking === "postpone" ? p.postpone : p.cancelEvent}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setAsking(null)}>
                 {t.common.keep}

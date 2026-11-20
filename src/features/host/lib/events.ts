@@ -16,6 +16,7 @@ import {
 import { getTemplate, initialContent, listTemplates } from "@/templates/registry";
 import type { Template } from "@/templates/types";
 import { auditActor, loadEventFor } from "./access";
+import { withoutBlockDates } from "./blocks";
 import { HostError } from "./errors";
 import { hashPasscode, PASSCODE_MAX_LENGTH, PASSCODE_MIN_LENGTH } from "./passcode";
 import { slugBase, weakPasscode } from "./text";
@@ -268,6 +269,32 @@ export function missingRequired(template: Template, content: EventContent): stri
     .map((f) => f.key);
 }
 
+// Keys publishing adds to the template's own required fields.
+export const PUBLISH_DATE = "starts_at";
+export const PUBLISH_VENUE = "venue";
+
+const filled = (value: { ar: string; en: string }) => value.ar.trim() !== "" || value.en.trim() !== "";
+
+// A place guests can find: a venue name under "Date and place", or a place
+// name or address in the location section (either language).
+function hasVenue(content: EventContent): boolean {
+  return content.blocks.some(
+    (block) =>
+      block.enabled &&
+      ((block.type === "details" && filled(block.venue)) || (block.type === "location" && (filled(block.label) || filled(block.address)))),
+  );
+}
+
+// Everything publishing still needs: the template's required fields, the
+// event date (the single source of truth is events.starts_at, set in
+// Settings) for every kind, and a venue for weddings.
+export function missingForPublish(template: Template, content: EventContent, startsAt: string | null): string[] {
+  const missing = missingRequired(template, content);
+  if (!startsAt) missing.push(PUBLISH_DATE);
+  if (template.kind === "wedding" && !hasVenue(content)) missing.push(PUBLISH_VENUE);
+  return missing;
+}
+
 // Copies the validated draft to the published columns. Needs a plan, which only
 // payment settlement can attach (security P1, rule 32).
 export async function publishEvent(
@@ -295,10 +322,10 @@ export async function publishEvent(
   // The same template checks as a draft save (fields, lengths, palette, font
   // pair), in case the draft was written another way (review F11).
   if (!fitTemplate(template, content.data, theme.data)) throw new HostError("invalid_content");
-  const missing = missingRequired(template, content.data);
+  const missing = missingForPublish(template, content.data, event.starts_at);
   if (missing.length > 0) throw new HostError("missing_required", { fields: missing });
 
-  const split = splitForPublish(content.data);
+  const split = splitForPublish(withoutBlockDates(content.data));
   const version = event.published_version + 1;
   // One statement re-checks plan, status and version, so a refund that removes
   // the plan or a second publish in flight cannot slip between check and write.

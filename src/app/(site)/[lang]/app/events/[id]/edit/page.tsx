@@ -31,6 +31,9 @@ async function EditorLoader({ params }: Pick<Props, "params">) {
       initialContent={parseContent(event.content)}
       initialTheme={themeSchema.catch({}).parse(event.theme)}
       timezone={event.timezone}
+      startsAt={event.starts_at}
+      endsAt={event.ends_at}
+      settingsHref={`/${lang}/app/events/${event.id}/settings`}
       allowed={allowedBlocks(template)}
     />
   );

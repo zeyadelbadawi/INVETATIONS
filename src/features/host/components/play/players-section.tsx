@@ -7,7 +7,7 @@ import { Badge, Card, Notice, SectionHeading } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { Locale } from "@/i18n/config";
 import type { PlayerView } from "../../lib/play-data";
-import { fmt } from "../../lib/text";
+import { fmt, plural } from "../../lib/text";
 import { hostMessages } from "../../messages";
 import { ActNotice } from "./act-notice";
 import { useAct } from "./use-act";
@@ -37,7 +37,12 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold [overflow-wrap:anywhere]">{player.name}</p>
-            {player.invitation ? <p className="text-sm text-muted [overflow-wrap:anywhere]">{fmt(p.via, { label: player.invitation })}</p> : null}
+            {player.invitation ? (
+              <p className="text-sm text-muted [overflow-wrap:anywhere]">
+                {/* The open link's stored label is in the language the event was created in; name it in the host's language. */}
+                {fmt(p.via, { label: player.invitationKind === "open" ? t.invitations.kinds.open : player.invitation })}
+              </p>
+            ) : null}
           </div>
           <Badge tone={player.approved ? "info" : "highlight"}>{player.approved ? p.approvedBadge : p.waitingBadge}</Badge>
         </div>
@@ -85,7 +90,7 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
                 act(() => kickPlayer(eventId, player.id), failedIfFalse);
               }}
             >
-              {t.common.confirm}
+              {p.remove}
             </Button>
             <Button variant="secondary" size="md" onClick={() => setRemoving(null)}>
               {t.common.keep}
@@ -126,7 +131,7 @@ export function PlayersSection({ lang, eventId, players, teams }: Props) {
         </Card>
       ) : null}
       <Card>
-        <SectionHeading title={p.title} lead={fmt(p.count, { n: players.length })} />
+        <SectionHeading title={p.title} lead={plural(lang, players.length, p.count)} />
         {players.length === 0 ? (
           <Notice>{p.empty}</Notice>
         ) : (

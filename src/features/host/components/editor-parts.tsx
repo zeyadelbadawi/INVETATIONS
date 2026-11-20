@@ -18,11 +18,12 @@ type LocalizedFieldProps = {
   multiline?: boolean;
   required?: boolean;
   placeholder?: Localized;
+  hint?: string;
 };
 
 // One piece of text in both languages. The host's own language comes first;
 // each input keeps its natural direction whatever the page direction is.
-export function LocalizedField({ id, label, value, onChange, max, lang, multiline, required, placeholder }: LocalizedFieldProps) {
+export function LocalizedField({ id, label, value, onChange, max, lang, multiline, required, placeholder, hint }: LocalizedFieldProps) {
   const t = hostMessages(lang).common;
   const order: Locale[] = lang === "ar" ? ["ar", "en"] : ["en", "ar"];
   const Control = multiline ? Textarea : Input;
@@ -31,7 +32,13 @@ export function LocalizedField({ id, label, value, onChange, max, lang, multilin
       <legend className="mb-1 flex items-baseline gap-2 text-[0.9375rem] font-semibold text-fg">
         <span>{label}</span>
         {required ? <span className="text-sm font-normal text-muted">({t.required})</span> : null}
+        {!required && hint ? <span className="text-sm font-normal text-muted">({t.optional})</span> : null}
       </legend>
+      {hint ? (
+        <p id={`${id}-hint`} className="-mt-1 mb-1 text-sm text-muted">
+          {hint}
+        </p>
+      ) : null}
       <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2">
         {order.map((locale) => (
           <div key={locale} className="flex flex-col gap-1">
@@ -45,6 +52,7 @@ export function LocalizedField({ id, label, value, onChange, max, lang, multilin
               value={value[locale]}
               maxLength={max}
               placeholder={placeholder?.[locale]}
+              aria-describedby={hint ? `${id}-hint` : undefined}
               onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
                 onChange({ ...value, [locale]: e.target.value })
               }

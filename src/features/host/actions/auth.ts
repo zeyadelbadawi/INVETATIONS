@@ -14,9 +14,25 @@ import { reservedEmail } from "../lib/text";
 
 export type AuthState = {
   error?: "invalid" | "credentials" | "weak_password" | "too_many" | "unknown";
-  notice?: "check_email";
+  // Problems with what was typed, all at once, shown under each field.
+  fields?: { email?: "email_missing" | "invalid"; password?: "password_missing" | "weak_password" };
+  notice?: "check_email" | "reset_sent" | "password_saved";
   email?: string;
 };
+
+const emailShape = z.email().max(254);
+
+// What is wrong with each field, before anything reaches the auth server.
+function fieldProblems(formData: FormData, mode: "login" | "signup"): AuthState["fields"] | null {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const fields: NonNullable<AuthState["fields"]> = {};
+  if (email === "") fields.email = "email_missing";
+  else if (mode === "signup" && (!emailShape.safeParse(email).success || reservedEmail(email))) fields.email = "invalid";
+  if (password === "") fields.password = "password_missing";
+  else if (mode === "signup" && (password.length < 8 || password.length > 72)) fields.password = "weak_password";
+  return fields.email || fields.password ? fields : null;
+}
 
 const credentials = z.object({
   email: z.email().max(254).transform((v) => v.toLowerCase()),
@@ -50,6 +66,10 @@ async function signInKey(email: string): Promise<string> {
 export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const lang = localeOf(formData);
   const next = safeNext(formData.get("next"), lang);
+  // Only empty fields are reported per field; anything else gets the one
+  // answer below, which says nothing about whether an account exists.
+  const empty = fieldProblems(formData, "login");
+  if (empty) return { fields: empty, email: String(formData.get("email") ?? "").slice(0, 254) };
   const parsed = credentials.safeParse({ email: formData.get("email"), password: formData.get("password") });
   // The same answer for a malformed address, an unknown one, an unconfirmed
   // one and a wrong password: nothing here says whether an account exists.
@@ -70,6 +90,8 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const lang = localeOf(formData);
   const next = safeNext(formData.get("next"), lang);
   const email = String(formData.get("email") ?? "").slice(0, 254);
+  const problems = fieldProblems(formData, "signup");
+  if (problems) return { error: problems.email ? "invalid" : "weak_password", fields: problems, email };
   const parsed = credentials.safeParse({ email, password: formData.get("password") });
   if (!parsed.success) {
     const weak = parsed.error.issues.some((issue) => issue.path[0] === "password");
@@ -113,4 +135,42 @@ export async function signOut(formData: FormData): Promise<void> {
   const db = await hostDb();
   await db.auth.signOut();
   redirect(`/${lang}/login` as Route);
+}
+
+const RESET_ATTEMPTS: Limit = { windowSeconds: 3600, max: 5 };
+
+// "Forgot password": the auth server emails a one-time recovery link that
+// lands on /auth/confirm, which signs the person in and sends them to the
+// new-password page. The answer is the same whether or not the address has
+// an account.
+export async function requestPasswordReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const lang = localeOf(formData);
+  const email = String(formData.get("email") ?? "").trim().slice(0, 254);
+  if (email === "") return { fields: { email: "email_missing" }, email };
+  const parsed = emailShape.safeParse(email);
+  if (!parsed.success || reservedEmail(email)) return { fields: { email: "invalid" }, email };
+  const address = parsed.data.toLowerCase();
+  if (!(await withinLimit(`host_reset:${hashed(address)}`, RESET_ATTEMPTS))) return { error: "too_many", email };
+  if (!(await withinLimit(`host_reset_ip:${hashed(await requestIp())}`, { windowSeconds: 3600, max: 20 }))) return { error: "too_many", email };
+
+  const db = await hostDb();
+  const confirmUrl = new URL(`/${lang}/auth/confirm`, appOrigin());
+  confirmUrl.searchParams.set("next", `/${lang}/app/password`);
+  // Errors (unknown address, mail limits) are not shown: the reply must not reveal accounts.
+  await db.auth.resetPasswordForEmail(address, { redirectTo: confirmUrl.toString() });
+  return { notice: "reset_sent", email: address };
+}
+
+// Sets a new password for the signed-in person (after the recovery link, or any time).
+export async function updatePassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const password = String(formData.get("password") ?? "");
+  if (password === "") return { fields: { password: "password_missing" } };
+  if (password.length < 8 || password.length > 72) return { fields: { password: "weak_password" } };
+  const db = await hostDb();
+  const { data: claims } = await db.auth.getClaims();
+  if (!claims?.claims?.sub) return { error: "unknown" };
+  const { error } = await db.auth.updateUser({ password });
+  if (error?.code === "weak_password") return { fields: { password: "weak_password" } };
+  if (error) return { error: "unknown" };
+  return { notice: "password_saved" };
 }

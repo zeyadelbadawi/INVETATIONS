@@ -4,13 +4,19 @@ import { audit } from "@/lib/audit";
 import { HostError } from "@/features/host/lib/errors";
 import { eventName } from "@/features/host/lib/display";
 import { referenceSchema, submittedReferences } from "@/features/host/lib/orders";
+import { latinDigits } from "@/features/host/lib/text";
+import { maskEmail } from "./events";
 
 export type PendingOrder = {
   id: string;
+  // The short number the customer sees on their Publish page.
+  ref: string;
   eventId: string;
   eventName: string;
   eventSlug: string;
+  ownerEmail: string;
   planId: string;
+  planName: string;
   amountEgp: number;
   createdAt: string;
   references: { reference: string; at: string }[];
@@ -49,34 +55,49 @@ async function involvedEvents(db: AdminClient, staffId: string, eventIds: string
   return out;
 }
 
-// The queue. Shows no guest data and no phone numbers.
-export async function listPendingOrders(db: AdminClient, staffId: string, locale: "ar" | "en"): Promise<PendingOrder[]> {
+const MAX_QUEUE = 1000;
+
+export function orderRef(orderId: string): string {
+  return orderId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+// The queue, newest first. Shows no guest data and no phone numbers; owner
+// emails are masked for support (security A3).
+export async function listPendingOrders(db: AdminClient, staffId: string, locale: "ar" | "en", role: string = "support"): Promise<PendingOrder[]> {
   const { data: orders, error } = await db
     .from("orders")
     .select("id, event_id, user_id, plan_id, amount_egp, created_at")
     .eq("status", "pending")
-    .order("created_at")
-    .limit(200);
+    .order("created_at", { ascending: false })
+    .limit(MAX_QUEUE);
   if (error) throw new Error(`order queue failed: ${error.message}`);
   if (!orders || orders.length === 0) return [];
 
   const eventIds = [...new Set(orders.map((o) => o.event_id))];
-  const [{ data: events }, references, granted] = await Promise.all([
+  const [{ data: events }, references, granted, { data: plans }] = await Promise.all([
     db.from("events").select("id, slug, owner_id, content").in("id", eventIds),
     submittedReferences(db, eventIds),
     involvedEvents(db, staffId, eventIds),
+    db.from("plans").select("id, name_ar, name_en"),
   ]);
   const byId = new Map((events ?? []).map((e) => [e.id, e]));
+  const ownerIds = [...new Set((events ?? []).map((e) => e.owner_id))];
+  const { data: emails } = ownerIds.length > 0 ? await db.rpc("staff_user_emails", { p_ids: ownerIds }) : { data: [] };
+  const emailOf = new Map((emails ?? []).map((row) => [row.id, row.email]));
+  const planName = new Map((plans ?? []).map((plan) => [plan.id, locale === "ar" ? plan.name_ar : plan.name_en]));
 
   return orders.map((order) => {
     const event = byId.get(order.event_id);
     return {
       id: order.id,
+      ref: orderRef(order.id),
       eventId: order.event_id,
       // Draft content is schema-parsed before it is shown to staff (security C1).
       eventName: event ? eventName(event.content, locale, event.slug) : order.event_id,
       eventSlug: event?.slug ?? "",
+      ownerEmail: maskEmail(event ? emailOf.get(event.owner_id) : null, role),
       planId: order.plan_id,
+      planName: planName.get(order.plan_id) ?? order.plan_id,
       amountEgp: order.amount_egp,
       createdAt: order.created_at,
       references: references.filter((r) => r.orderId === order.id).map((r) => ({ reference: r.reference, at: r.at })),
@@ -147,4 +168,45 @@ export async function approveOrder(db: AdminClient, staffId: string, raw: unknow
     metadata: { plan_id: order.plan_id, amount_egp: input.amountEgp, provider: "manual", reference: input.reference },
   });
   return { eventId: event.id };
+}
+
+export const QUEUE_PAGE_SIZE = 25;
+export type QueueFilter = "all" | "reference" | "awaiting";
+export type QueuePage = { orders: PendingOrder[]; total: number; page: number; pages: number; waiting: number };
+
+// One page of the queue, after search and filter. Search matches the order
+// number, a transfer reference, the event name or link, and (for admins, whose
+// view is unmasked) the owner's email.
+export async function queryPendingOrders(
+  db: AdminClient,
+  staffId: string,
+  locale: "ar" | "en",
+  role: string,
+  options: { q?: string; filter?: QueueFilter; page?: number },
+): Promise<QueuePage> {
+  const all = await listPendingOrders(db, staffId, locale, role);
+  const q = latinDigits(options.q ?? "").trim().toLowerCase().slice(0, 120);
+  const filter = options.filter ?? "all";
+  const matches = all.filter((order) => {
+    if (filter === "reference" && order.references.length === 0) return false;
+    if (filter === "awaiting" && order.references.length > 0) return false;
+    if (q === "") return true;
+    const haystack = [order.ref, order.eventName, order.eventSlug, ...order.references.map((r) => r.reference), role === "admin" ? order.ownerEmail : ""];
+    return haystack.some((value) => value.toLowerCase().includes(q));
+  });
+  const pages = Math.max(1, Math.ceil(matches.length / QUEUE_PAGE_SIZE));
+  const page = Math.min(Math.max(1, Math.floor(options.page ?? 1)), pages);
+  return {
+    orders: matches.slice((page - 1) * QUEUE_PAGE_SIZE, page * QUEUE_PAGE_SIZE),
+    total: matches.length,
+    page,
+    pages,
+    waiting: all.filter((order) => order.references.length > 0).length,
+  };
+}
+
+// Plan ids ("essential", "premium") as the plan names customers see.
+export async function planNames(db: AdminClient, locale: "ar" | "en"): Promise<Map<string, string>> {
+  const { data } = await db.from("plans").select("id, name_ar, name_en");
+  return new Map((data ?? []).map((plan) => [plan.id, locale === "ar" ? plan.name_ar : plan.name_en]));
 }

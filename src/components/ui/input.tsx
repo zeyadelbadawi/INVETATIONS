@@ -1,13 +1,19 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 // 16px text so phones never zoom into a field.
-export const controlClass =
-  "block w-full min-h-11 rounded-control border border-line bg-raised px-3 py-2 text-base text-fg " +
-  "transition-[border-color] duration-150 hover:border-fg/30 focus:border-fg/60 " +
+const controlBase =
+  "block w-full min-h-11 rounded-control border bg-raised px-3 py-2 text-base text-fg " +
+  "transition-[border-color] duration-150 " +
   "placeholder:text-muted/80 aria-[invalid=true]:border-danger disabled:cursor-not-allowed disabled:opacity-60";
 
-export function Input({ className = "", ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`${controlClass} ${className}`} {...rest} />;
+export const controlClass = `${controlBase} border-line hover:border-fg/30 focus:border-fg/60`;
+
+// On the night set (sign-in, sign-up) the hairline border is too faint to find
+// the field; ash keeps it above 3:1 against night (WCAG 1.4.11).
+export const nightControlClass = `${controlBase} border-ash hover:border-bone focus:border-bone`;
+
+export function Input({ className = "", night = false, ...rest }: InputHTMLAttributes<HTMLInputElement> & { night?: boolean }) {
+  return <input className={`${night ? nightControlClass : controlClass} ${className}`} {...rest} />;
 }
 
 export function Textarea({ className = "", rows = 3, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -24,7 +30,7 @@ type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { lab
 export function Checkbox({ label, hint, className = "", ...rest }: CheckboxProps) {
   return (
     <label className={`flex min-h-11 cursor-pointer items-start gap-3 py-3 ${className}`}>
-      <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-fg" {...rest} />
+      <input type="checkbox" className="size-6 shrink-0 accent-fg" {...rest} />
       <span>
         <span className="block text-base text-fg">{label}</span>
         {hint ? <span className="mt-0.5 block text-sm text-muted">{hint}</span> : null}

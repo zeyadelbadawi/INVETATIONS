@@ -24,13 +24,16 @@ const palettes: Palette[] = [
 
 const fontPairs = [{ id: "classic", name: L("كلاسيكي", "Classic") }];
 
-// Until real footage is approved and generated (playbook gates), every template
-// uses the synthetic draft scene so the whole product can be built and tested.
-const draftScene = { id: "draft.opening", rev: 1, scrollVh: 260, holdVh: 80, gate: true } as const;
+// Opening scenes generated and approved on 2026-11-20 (docs/footage/sequence-log.md).
+// Template ids keep their original names so events already created still resolve.
+const scene = (id: string) => ({ id, rev: 1, scrollVh: 260, holdVh: 80, gate: true }) as const;
+const doorsScene = scene("wedding.doors");
+const boxScene = scene("reveal.box");
+const stageScene = scene("corporate.stage");
 
-const centered = (field: string, role: "eyebrow" | "title" | "subtitle", y: number, from: number, to: number) => ({
+const centered = (sceneId: string) => (field: string, role: "eyebrow" | "title" | "subtitle", y: number, from: number, to: number) => ({
   field,
-  scene: draftScene.id,
+  scene: sceneId,
   role,
   appear: { on: "hold" as const, from, to },
   position: { desktop: { x: 50, y, width: 60 }, mobile: { x: 50, y, width: 84 } },
@@ -44,9 +47,9 @@ const templates: Template[] = [
     id: "wedding-draft",
     version: 1,
     kind: "wedding",
-    name: L("زفاف — تجريبي", "Wedding — draft"),
-    description: L("قالب تجريبي لحين اعتماد المشاهد", "Placeholder until scenes are approved"),
-    scenes: [draftScene],
+    name: L("زفاف — باب الجنينة", "Wedding — Garden doors"),
+    description: L("ممر فوانيس لحد باب خشب منقوش بيتفتح على النور", "A lantern-lit path to carved doors opening onto warm light"),
+    scenes: [doorsScene],
     fields: [
       { key: "eyebrow", label: L("سطر علوي", "Opening line"), maxLength: 80, required: false, placeholder: L("نتشرف بدعوتكم لحضور زفاف", "Together with their families") },
       { key: "partner_one", label: L("الاسم الأول", "First name"), maxLength: 40, required: true },
@@ -54,10 +57,10 @@ const templates: Template[] = [
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered("eyebrow", "eyebrow", 34, 0, 0.3),
-      centered("partner_one", "title", 46, 0.1, 0.45),
-      centered("partner_two", "title", 58, 0.2, 0.55),
-      centered("date_line", "subtitle", 70, 0.35, 0.7),
+      centered(doorsScene.id)("eyebrow", "eyebrow", 34, 0, 0.3),
+      centered(doorsScene.id)("partner_one", "title", 46, 0.1, 0.45),
+      centered(doorsScene.id)("partner_two", "title", 58, 0.2, 0.55),
+      centered(doorsScene.id)("date_line", "subtitle", 70, 0.35, 0.7),
     ],
     splash: { kind: "initials", from: ["partner_one", "partner_two"] },
     blocks: [
@@ -85,18 +88,18 @@ const templates: Template[] = [
     id: "reveal-draft",
     version: 1,
     kind: "gender_reveal",
-    name: L("كشف نوع المولود — تجريبي", "Gender reveal — draft"),
-    description: L("قالب تجريبي لحين اعتماد المشاهد", "Placeholder until scenes are approved"),
-    scenes: [draftScene],
+    name: L("كشف نوع المولود — الصندوق المقفول", "Gender reveal — The sealed box"),
+    description: L("صندوق هدية محايد بيبدأ النور يطلع منه، والإجابة بتظهر في وقتها بس", "A neutral gift box that starts to glow; the answer appears only at the reveal"),
+    scenes: [boxScene],
     fields: [
       { key: "eyebrow", label: L("سطر علوي", "Opening line"), maxLength: 80, required: false, placeholder: L("ولد ولا بنت؟", "Boy or girl?") },
       { key: "parents", label: L("اسم الأب والأم", "Parents' names"), maxLength: 80, required: true },
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered("eyebrow", "eyebrow", 38, 0, 0.3),
-      centered("parents", "title", 52, 0.1, 0.45),
-      centered("date_line", "subtitle", 66, 0.3, 0.65),
+      centered(boxScene.id)("eyebrow", "eyebrow", 38, 0, 0.3),
+      centered(boxScene.id)("parents", "title", 52, 0.1, 0.45),
+      centered(boxScene.id)("date_line", "subtitle", 66, 0.3, 0.65),
     ],
     splash: { kind: "initials", from: ["parents"] },
     blocks: [
@@ -118,18 +121,18 @@ const templates: Template[] = [
     id: "corporate-draft",
     version: 1,
     kind: "corporate",
-    name: L("فعالية شركات — تجريبي", "Corporate event — draft"),
-    description: L("قالب تجريبي لحين اعتماد المشاهد", "Placeholder until scenes are approved"),
-    scenes: [draftScene],
+    name: L("فعالية شركات — القاعة", "Corporate event — The hall"),
+    description: L("ممر القاعة لحد شاشة كبيرة عليها اسم شركتك", "Down the aisle to a wide screen with your company's name"),
+    scenes: [stageScene],
     fields: [
       { key: "company", label: L("اسم الشركة", "Company"), maxLength: 60, required: true },
       { key: "title", label: L("اسم الفعالية", "Event title"), maxLength: 80, required: true },
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered("company", "eyebrow", 38, 0, 0.3),
-      centered("title", "title", 52, 0.1, 0.45),
-      centered("date_line", "subtitle", 66, 0.3, 0.65),
+      centered(stageScene.id)("company", "eyebrow", 38, 0, 0.3),
+      centered(stageScene.id)("title", "title", 52, 0.1, 0.45),
+      centered(stageScene.id)("date_line", "subtitle", 66, 0.3, 0.65),
     ],
     splash: { kind: "initials", from: ["company"] },
     blocks: [

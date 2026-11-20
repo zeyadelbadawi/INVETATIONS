@@ -5,6 +5,7 @@
 // Usage:
 //   node tools/sequences/build-video.mjs --input shot.mp4 --id brand.scene --out public/media/drafts [--draft]
 //        [--focal 0.5,0.5] [--ease-in 0.06] [--ease-out 0.12] [--no-motion]
+//        [--desktop-crf 24] [--mobile-crf 26]   (raise for detailed footage to stay within the phone budget)
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, statSync, writeFileSync } from "node:fs";
@@ -31,8 +32,8 @@ const VARIANTS = draft
       { name: "mobile", width: 432, height: 540, crf: 34 },
     ]
   : [
-      { name: "desktop", width: 1920, height: 1080, crf: 24 },
-      { name: "mobile", width: 1080, height: 1350, crf: 26 },
+      { name: "desktop", width: 1920, height: 1080, crf: Number(args["desktop-crf"] ?? 24) },
+      { name: "mobile", width: 1080, height: 1350, crf: Number(args["mobile-crf"] ?? 26) },
     ];
 
 const X264 = [

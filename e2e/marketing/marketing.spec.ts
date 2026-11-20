@@ -207,7 +207,7 @@ test("product screens match the page language", async ({ page }) => {
 
 test("the opening actions are either hidden or fully opaque", async ({ page }) => {
   await page.goto("/en");
-  await expect(page.locator("#top").getByRole("link", { name: "See how it works" })).toHaveCount(1);
+  await expect(page.locator("#top").getByRole("link", { name: "Open a demo invitation" })).toHaveCount(1);
   const height = await page.locator("#top").evaluate((element) => (element as HTMLElement).offsetHeight);
   const viewport = page.viewportSize()!.height;
   for (let y = 0; y <= height - viewport; y += Math.round(viewport / 4)) {
@@ -241,4 +241,12 @@ test("the reveal copy makes no claim beyond what the product does", async ({ pag
     const text = await page.locator("#reveal").innerText();
     expect(text).not.toMatch(/us included|ولا حتى إحنا/);
   }
+});
+
+test("each scene links to its own live demo invitation", async ({ page }) => {
+  await page.goto("/ar");
+  const hrefs = await page.locator('a[href^="/l/demo-"]').evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  const slugs = new Set(hrefs.map((href) => href?.split("#")[0]));
+  expect([...slugs].sort()).toEqual(["/l/demo-corporate", "/l/demo-gender-reveal", "/l/demo-wedding"]);
+  for (const href of hrefs) expect(href).toMatch(/^\/l\/demo-[a-z-]+#[A-Za-z0-9]{22}$/);
 });

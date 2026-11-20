@@ -3,6 +3,7 @@ import type { Locale } from "@/i18n/config";
 import { ScrollScene } from "@/scenes/ScrollScene";
 import { marketingMessages } from "../../messages";
 import { sceneStill, type MarketingScene } from "../../scenes";
+import { demoLinks } from "../../demo";
 import { localHref } from "../../site";
 import { StillFrame } from "../still-frame";
 
@@ -26,9 +27,10 @@ export function Doors({ lang, scene }: { lang: Locale; scene: MarketingScene | n
       <Link href={localHref(lang, "/signup")} className="mk-btn mk-btn--large">
         {t.cta}
       </Link>
-      <Link href={localHref(lang, "/how-it-works")} className="mk-btn mk-btn--large mk-btn--over">
-        {t.how}
-      </Link>
+      {/* A real published invitation, not a mock-up: the strongest proof on the page. */}
+      <a href={demoLinks.wedding} className="mk-btn mk-btn--large mk-btn--over">
+        {t.demo}
+      </a>
     </div>
   );
 

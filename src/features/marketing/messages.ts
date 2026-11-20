@@ -55,6 +55,7 @@ const en = {
     lead: "Build it and preview it for free. You pay when you publish.",
     cta: "Start your invitation",
     how: "See how it works",
+    demo: "Open a demo invitation",
   },
   guest: {
     title: "What your guests see on their phones",
@@ -73,6 +74,7 @@ const en = {
     meter: "Both teams start level",
     lead: "Guests pick a team, and one countdown runs on every phone at once.",
     sealed: "The answer is encrypted and stays locked until the moment you set.",
+    demo: "Open the gender reveal demo",
   },
   games: {
     title: "The games come with real questions",
@@ -94,6 +96,7 @@ const en = {
     alt: "A wood-panelled hall with rows of seats facing a stage, a light beam crossing the screen.",
     title: "For companies, the same link with your branding",
     lead: "Agenda, speakers, parking and the gate on one page, with an invoice for your finance team.",
+    demo: "Open the company demo",
     list: [
       "An invitation with each attendee's name",
       "Teams by department",
@@ -289,6 +292,7 @@ const ar: MarketingMessages = {
     lead: "صمّمها وعاينها ببلاش، وادفع لما تنشر.",
     cta: "ابدأ دعوتك",
     how: "شوف بتشتغل إزاي",
+    demo: "افتح دعوة ديمو",
   },
   guest: {
     title: "اللي المعازيم بيشوفوه على موبايلاتهم",
@@ -307,6 +311,7 @@ const ar: MarketingMessages = {
     meter: "الفريقين بيبدأوا متعادلين",
     lead: "كل ضيف بيختار تيم، والعد التنازلي واحد على كل الموبايلات في نفس الوقت.",
     sealed: "الإجابة بتتشفّر وتفضل مقفولة لحد اللحظة اللي تحددها.",
+    demo: "افتح ديمو كشف النوع",
   },
   games: {
     title: "الألعاب جاية بأسئلة حقيقية",
@@ -328,6 +333,7 @@ const ar: MarketingMessages = {
     alt: "قاعة بحيطان خشب وصفوف كراسي قدام مسرح، وشعاع نور معدّي على الشاشة.",
     title: "وللشركات، نفس اللينك بهوية شركتك",
     lead: "الأجندة والمتحدثين والركنة والبوابة في صفحة واحدة، ومعاها فاتورة للحسابات.",
+    demo: "افتح ديمو الشركات",
     list: ["دعوة باسم كل حد حاضر", "فرق بالأقسام", "تشويقات بتفتح على مواعيد", "استطلاعات قبل اليوم وتصويت على الجوايز", "ملخص للمشاركة بعدها"],
   },
   lifecycle: {

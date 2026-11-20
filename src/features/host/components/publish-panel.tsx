@@ -288,6 +288,11 @@ export function PublishPanel({ lang, eventId, eventName, ownerEmail, status, ver
                   </div>
                 ))}
               </dl>
+              {brand.payments.holder ? (
+                <p className="mt-2 text-sm text-muted">
+                  {p.payHolder} <bdi dir="ltr" className="font-semibold text-fg">{brand.payments.holder}</bdi>
+                </p>
+              ) : null}
               <p className="mt-3 max-w-prose">{p.payThen}</p>
             </>
           ) : (

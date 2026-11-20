@@ -1,6 +1,7 @@
 import type { Locale } from "@/i18n/config";
 import { ScrubWords } from "@/features/motion/Scrub";
 import { ScrollScene } from "@/scenes/ScrollScene";
+import { demoLinks } from "../../demo";
 import { marketingMessages } from "../../messages";
 import { sceneStill, type MarketingScene } from "../../scenes";
 import { StillFrame } from "../still-frame";
@@ -30,6 +31,9 @@ export function Reveal({ lang, scene }: { lang: Locale; scene: MarketingScene | 
         </div>
         <p className="mk-reveal__lead">{t.lead}</p>
         <p className="mk-reveal__sealed">{t.sealed}</p>
+        <a href={demoLinks.gender_reveal} className="mk-demo-link">
+          {t.demo}
+        </a>
       </div>
     </div>
   );

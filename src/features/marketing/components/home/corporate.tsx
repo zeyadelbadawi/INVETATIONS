@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Locale } from "@/i18n/config";
 import { ScrollScene } from "@/scenes/ScrollScene";
+import { demoLinks } from "../../demo";
 import { marketingMessages } from "../../messages";
 import { sceneStill, type MarketingScene } from "../../scenes";
 import { StillFrame } from "../still-frame";
@@ -23,6 +24,9 @@ export function Corporate({ lang, scene }: { lang: Locale; scene: MarketingScene
           </li>
         ))}
       </ul>
+      <a href={demoLinks.corporate} className="mk-demo-link">
+        {t.demo}
+      </a>
     </div>
   );
 

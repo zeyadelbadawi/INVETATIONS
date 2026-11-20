@@ -1810,3 +1810,23 @@
   border-top: 1px solid var(--line);
   color: var(--brand-ash);
 }
+
+/* Link to a scene's live demo invitation. It switches on (no half-visible
+   state) once the hold has settled, like the opening actions. */
+.mk-demo-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  color: var(--brand-lantern);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  text-decoration: underline;
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.25em;
+  opacity: clamp(0, (var(--seq-hold, 1) - 0.55) * 40, 1);
+  transition: color 150ms var(--ease-out);
+}
+.mk-demo-link:hover {
+  color: var(--brand-bone);
+}

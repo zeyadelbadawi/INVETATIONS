@@ -28,7 +28,6 @@ import { DetailsCta } from "./opening/DetailsCta";
 import { OpeningScene, PlainOpening, type OverlayItem } from "./opening/OpeningScene";
 import type { LoadedScene } from "./server/scenes";
 import type { Answer, GuestMe, InviteEvent, LivePayload, RevealStyle } from "./types";
-import { Star } from "./Icon";
 import "./invite.css";
 
 export type InvitationDemo = { me: GuestMe; live?: LivePayload; extras?: DemoExtras; answer?: Answer; interactiveReveal?: boolean };
@@ -155,7 +154,6 @@ export function Invitation({ event, template, palette, locale, scene, revealStyl
             </main>
 
             <footer className="inv-foot">
-              <Star size={12} />
               <p>
                 {t.footer.madeWith}{" "}
                 <a className="inv-link" href={`/${locale}`}>

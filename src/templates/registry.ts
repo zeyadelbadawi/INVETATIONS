@@ -1,6 +1,6 @@
 import type { Block, BlockType, EventContent } from "@/content/schema";
 import { contentSchema } from "@/content/schema";
-import type { EventKind, Palette, Template } from "./types";
+import type { EventKind, OverlaySlot, Palette, Template } from "./types";
 
 const L = (ar: string, en: string) => ({ ar, en });
 
@@ -31,13 +31,23 @@ const doorsScene = scene("wedding.doors");
 const boxScene = scene("reveal.box");
 const stageScene = scene("corporate.stage");
 
-const centered = (sceneId: string) => (field: string, role: "eyebrow" | "title" | "subtitle", y: number, from: number, to: number) => ({
+// One line of copy on the footage. Positions are percentages of the frame: the
+// 16:9 desktop file and the 4:5 phone crop (the middle 45% of the same frame),
+// chosen on the calm, dark parts of each scene's last frame. Phones show only
+// x 21–79 of their crop, and the bottom ~12% of every screen belongs to the
+// "Details" button, so nothing is placed there. Lines whose y values sit within
+// 20 points of each other share one scrim (see OpeningScene).
+type Place = [x: number, y: number, width: number];
+const line = (sceneId: string) => (field: string, role: OverlaySlot["role"], hold: [number, number], desktop: Place, mobile: Place): OverlaySlot => ({
   field,
   scene: sceneId,
   role,
-  appear: { on: "hold" as const, from, to },
-  position: { desktop: { x: 50, y, width: 60 }, mobile: { x: 50, y, width: 84 } },
-  align: "center" as const,
+  appear: { on: "hold", from: hold[0], to: hold[1] },
+  position: {
+    desktop: { x: desktop[0], y: desktop[1], width: desktop[2] },
+    mobile: { x: mobile[0], y: mobile[1], width: mobile[2] },
+  },
+  align: "center",
   maxLines: 2,
   wash: true,
 });
@@ -57,10 +67,11 @@ const templates: Template[] = [
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered(doorsScene.id)("eyebrow", "eyebrow", 34, 0, 0.3),
-      centered(doorsScene.id)("partner_one", "title", 46, 0.1, 0.45),
-      centered(doorsScene.id)("partner_two", "title", 58, 0.2, 0.55),
-      centered(doorsScene.id)("date_line", "subtitle", 70, 0.35, 0.7),
+      // The lower, dark carved panels of the doors, under the lit lattice and above the steps.
+      line(doorsScene.id)("eyebrow", "eyebrow", [0.02, 0.24], [50, 45.5, 50], [50, 47, 84]),
+      line(doorsScene.id)("partner_one", "title", [0.1, 0.34], [50, 55.5, 60], [50, 56, 84]),
+      line(doorsScene.id)("partner_two", "title", [0.2, 0.44], [50, 72, 60], [50, 69, 84]),
+      line(doorsScene.id)("date_line", "subtitle", [0.48, 0.72], [50, 82.5, 50], [50, 78.5, 84]),
     ],
     splash: { kind: "initials", from: ["partner_one", "partner_two"] },
     blocks: [
@@ -97,9 +108,10 @@ const templates: Template[] = [
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered(boxScene.id)("eyebrow", "eyebrow", 38, 0, 0.3),
-      centered(boxScene.id)("parents", "title", 52, 0.1, 0.45),
-      centered(boxScene.id)("date_line", "subtitle", 66, 0.3, 0.65),
+      // The dark wall above the box. On phones the box fills the width, so the date drops under the table.
+      line(boxScene.id)("eyebrow", "eyebrow", [0.02, 0.24], [50, 11.5, 40], [50, 15, 84]),
+      line(boxScene.id)("parents", "title", [0.1, 0.36], [50, 20.5, 50], [50, 23, 84]),
+      line(boxScene.id)("date_line", "subtitle", [0.46, 0.7], [50, 29.5, 40], [50, 87, 84]),
     ],
     splash: { kind: "initials", from: ["parents"] },
     blocks: [
@@ -130,9 +142,10 @@ const templates: Template[] = [
       { key: "date_line", label: L("سطر التاريخ", "Date line"), maxLength: 80, required: false },
     ],
     overlays: [
-      centered(stageScene.id)("company", "eyebrow", 38, 0, 0.3),
-      centered(stageScene.id)("title", "title", 52, 0.1, 0.45),
-      centered(stageScene.id)("date_line", "subtitle", 66, 0.3, 0.65),
+      // The dark backdrop of the stage, between the spotlight and the haze.
+      line(stageScene.id)("company", "eyebrow", [0.02, 0.24], [50, 20, 50], [50, 21, 84]),
+      line(stageScene.id)("title", "title", [0.1, 0.36], [50, 31, 60], [50, 30.5, 84]),
+      line(stageScene.id)("date_line", "subtitle", [0.46, 0.7], [50, 42, 50], [50, 40, 84]),
     ],
     splash: { kind: "initials", from: ["company"] },
     blocks: [

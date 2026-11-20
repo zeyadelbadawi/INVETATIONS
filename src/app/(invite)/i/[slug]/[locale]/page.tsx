@@ -56,7 +56,6 @@ async function inviteMetadata(slug: string, locale: Locale): Promise<Metadata> {
     ? [{ url: `/api/og/${event.slug}`, ...(image.width && image.height ? { width: image.width, height: image.height } : {}), alt: title }]
     : undefined;
   return {
-    metadataBase: new URL(appOrigin()),
     title,
     description,
     robots: { index: false, follow: false, nocache: true },
@@ -68,7 +67,8 @@ async function inviteMetadata(slug: string, locale: Locale): Promise<Metadata> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, locale } = await params;
   if (!isLocale(locale)) return {};
-  return inviteMetadata(slug, locale);
+  // A URL object cannot leave a cached function, so the base is added out here.
+  return { ...(await inviteMetadata(slug, locale)), metadataBase: new URL(appOrigin()) };
 }
 
 async function InvitationPage({ slug, locale }: { slug: string; locale: string }) {

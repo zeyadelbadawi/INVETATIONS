@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { dirOf, type Locale } from "@/i18n/config";
-import { Star } from "../Icon";
 import { inviteFontClass } from "../fonts";
 import "../invite.css";
 
@@ -10,9 +9,8 @@ export function Gate({ locale, busy = false, children }: { locale: Locale; busy?
     <div className={`inv inv--brand ${inviteFontClass}`} lang={locale} dir={dirOf(locale)} data-scheme="light">
       <main className="inv-gate">
         <div className="inv-gate__card">
-          <span className="inv-gate__mark" data-busy={busy ? "true" : "false"}>
-            <Star size={28} />
-          </span>
+          {/* A hairline that runs while the link is being checked. */}
+          <span className="inv-gate__mark" data-busy={busy ? "true" : "false"} aria-hidden="true" />
           {children}
         </div>
       </main>

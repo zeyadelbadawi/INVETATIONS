@@ -36,7 +36,10 @@ export function Countdown({ target, locale }: { target: string; locale: Locale }
     <div className="inv-countdown" role="timer" aria-label={t.blocks.countdown}>
       {cells.map(([value, label]) => (
         <div key={label} className="inv-countdown__cell">
-          <span className="inv-countdown__value inv-num">{value}</span>
+          {/* Keyed by value: each change re-mounts the digits, which roll in once (the clock's own motion). */}
+          <span key={value} className="inv-countdown__value inv-num">
+            {value}
+          </span>
           <span className="inv-countdown__label">{label}</span>
         </div>
       ))}

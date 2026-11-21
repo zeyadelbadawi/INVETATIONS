@@ -40,3 +40,13 @@ Encoded with `tools/sequences/build-video.mjs` (ease-in 0.06, ease-out 0.12, foc
 - corporate.stage at 24/26: desktop 4.23 MB, mobile 1.97 MB.
 
 Served from the app itself (no media CDN yet). The source is 1928×1072 at 1080p, so the phone 4:5 crop is upscaled from about 858 px wide.
+
+## 2026-11-21 — Photos for the demos and the marketing site
+
+- Approved by the owner: 3 sheets, 435 credits (balance before: 503).
+- Model: Google Nano Banana 2.1, 4K, 1:1, each sheet a 3×3 grid of nine photos, cut locally (no paid split): 27 photos of ~1340 px.
+- Sheet 1: wedding details (rings, henna bouquet, reception table, garden walk, cake, cufflinks, zaffa drums, veil at the doors, sparklers).
+- Sheet 2: gender reveal (baby shoes, balloons, cake, gift box, nursery) and corporate (audience, coffee break, speaker, trophies).
+- Sheet 3: guests at celebrations with phones and the marketing set (phone at table, garden family, toast, phone with lanterns, grandmother with phone, hall raising hands, kids with balloons, laptop with jasmine, dancing).
+- Demos: uploaded through the content-image pipeline with `tools/demo/upload-demo-photos.ts` (wedding 9, gender reveal 5, corporate 4) and set as each demo's gallery and link preview.
+- Marketing: 13 photos in `public/marketing/photos` at 1200 and 640 px.

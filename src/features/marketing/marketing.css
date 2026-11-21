@@ -1325,6 +1325,55 @@
     --done: clamp(0, (var(--p, 1) - 0.66) / 0.06, 1);
   }
 }
+/* Each stage's photograph uncovers from the reading-start side as the pass
+   reaches that stage, and stays uncovered. The image settles from 1.06. */
+.mk-stage__photo {
+  --seen: clamp(0, (var(--p, 1) - var(--at) + 0.15) / 0.13, 1);
+  --cut: calc((1 - var(--seen)) * 100%);
+  aspect-ratio: 3 / 2;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  background: var(--brand-dusk);
+  clip-path: inset(0 calc(var(--cut) * (1 - var(--x-dir)) / 2) 0 calc(var(--cut) * (1 + var(--x-dir)) / 2));
+}
+.mk-stage__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(calc(1 + 0.06 * (1 - var(--seen))));
+}
+.mk-stage:nth-child(1) .mk-stage__photo img {
+  object-position: 50% 62%;
+}
+.mk-stage:nth-child(2) .mk-stage__photo img {
+  object-position: 50% 45%;
+}
+.mk-stage:nth-child(3) .mk-stage__photo img {
+  object-position: 50% 70%;
+}
+@media (max-width: 767px) {
+  /* Stacked: the photograph stands beside the stage's name and items. */
+  .mk-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34%;
+    grid-template-rows: auto 1fr;
+    column-gap: 1rem;
+  }
+  .mk-stage__photo {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    aspect-ratio: 3 / 4;
+    margin: 0.5rem 0 0;
+  }
+  .mk-stage__when {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .mk-stage__items {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
 .mk-stage__when {
   font-family: var(--font-display);
   font-weight: 700;
@@ -1338,6 +1387,62 @@
 }
 .mk-stage__items li + li {
   margin-top: 0.625rem;
+}
+
+/* After the guest sequence: the invitation in a guest's hand at the table.
+   The photograph bleeds to the inline-end edge; it opens from a thin band to
+   its full height and settles from 1.06 as it comes through the viewport. */
+.mk-moment {
+  --q: clamp(0, (var(--p, 1) - 0.04) / 0.4, 1);
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding-block: clamp(1.5rem, 5vw, 5rem);
+}
+.mk-moment__photo {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--brand-dusk);
+  clip-path: inset(calc((1 - var(--q)) * 14%) 0);
+}
+.mk-moment__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% 45%;
+  transform: scale(calc(1 + 0.06 * (1 - var(--q))));
+}
+.mk-moment__line {
+  max-width: 26ch;
+  margin-inline: 1rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 1.05rem + 2vw, 2.75rem);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.mk-moment__line:lang(ar) {
+  line-height: 1.45;
+}
+@media (min-width: 768px) {
+  .mk-moment {
+    grid-template-columns: minmax(0, 1fr) 62%;
+    align-items: end;
+    gap: clamp(2rem, 4vw, 4rem);
+    padding-inline-start: max(1.5rem, (100% - 76rem) / 2);
+  }
+  .mk-moment__photo {
+    grid-column: 2;
+    grid-row: 1;
+    aspect-ratio: auto;
+    height: min(72svh, 42rem);
+  }
+  .mk-moment__line {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    padding-bottom: 0.5rem;
+  }
 }
 
 /* Privacy: the statement settles while the personal-link view of the same
@@ -1434,6 +1539,38 @@
 }
 .mk-make__block .mk-btn {
   margin-top: 1.5rem;
+}
+/* The host's desk sits over the "yourself" column and travels with it; the
+   section title takes the space beside it. */
+.mk-make__photo {
+  --q: clamp(0, var(--p, 1) / 0.9, 1);
+  aspect-ratio: 3 / 1;
+  overflow: hidden;
+  background: var(--brand-dusk);
+  opacity: calc(0.2 + 0.8 * var(--q));
+  transform: translate3d(calc(var(--x-dir) * (1 - var(--q)) * 18cqi), 0, 0);
+}
+.mk-make__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 52%;
+}
+@media (min-width: 768px) {
+  .mk-make__grid {
+    row-gap: 2.5rem;
+  }
+  .mk-make__title {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    padding-bottom: 0.5rem;
+  }
+  .mk-make__photo {
+    grid-column: 1;
+    grid-row: 1;
+    aspect-ratio: 2 / 1;
+  }
 }
 
 /* Prices: a plain table, the recommended plan marked by a heading row. The
@@ -1622,9 +1759,39 @@
   inset: 0;
   background: linear-gradient(to bottom, color-mix(in oklab, var(--brand-night) 55%, transparent), var(--brand-night));
 }
+.mk-backdrop--table img {
+  object-position: 50% 62%;
+}
 .mk-pricing {
   position: relative;
   padding-bottom: 6rem;
+}
+
+/* How it works: the host's desk beside the title. First viewport, so still. */
+.mk-pagehead--photo {
+  display: grid;
+  gap: 2rem;
+}
+.mk-pagehead__photo {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--brand-dusk);
+}
+.mk-pagehead__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 52%;
+}
+@media (min-width: 900px) {
+  .mk-pagehead--photo {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: end;
+    column-gap: clamp(3rem, 6vw, 6rem);
+  }
+  .mk-pagehead__photo {
+    aspect-ratio: 4 / 3;
+  }
 }
 
 /* Comparison: a table with a sticky plan header from 900px, plan sections below. */

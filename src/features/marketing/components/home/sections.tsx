@@ -7,6 +7,7 @@ import { Scrub } from "@/features/motion/Scrub";
 import { sceneStill } from "../../scenes";
 import { localHref } from "../../site";
 import { LayeredPhone } from "../phone";
+import { Photo, type PhotoName } from "../photo";
 import { StillFrame } from "../still-frame";
 
 // The sections after the scenes. Each carries its own scroll idea, read from
@@ -14,6 +15,10 @@ import { StillFrame } from "../still-frame";
 // light up in turn, the private part of the invitation uncovers beside the
 // statement, the two ways to make it close in from both sides, and the price
 // table draws its rules. The questions and the finale stay still.
+
+// One photograph per stage, of that moment: a guest reading the invitation,
+// the hall on the night, the family still at the table afterwards.
+const STAGE_PHOTOS: PhotoName[] = ["phone-lanterns", "hall-hands", "garden-family"];
 
 export function Lifecycle({ lang }: { lang: Locale }) {
   const t = marketingMessages(lang).lifecycle;
@@ -26,6 +31,9 @@ export function Lifecycle({ lang }: { lang: Locale }) {
         <Scrub range="through" className="mk-lifecycle__cols" style={{ "--n": t.stages.length } as CSSProperties}>
           {t.stages.map((stage, index) => (
             <div key={stage.when} className="mk-stage" style={{ "--i": index } as CSSProperties}>
+              <div className="mk-stage__photo">
+                <Photo name={STAGE_PHOTOS[index]} alt={stage.photoAlt} sizes="(min-width: 76rem) 24rem, (min-width: 768px) 31vw, 100vw" />
+              </div>
               <h3 className="mk-stage__when">{stage.when}</h3>
               <ul className="mk-stage__items">
                 {stage.items.map((item) => (
@@ -69,10 +77,13 @@ export function MakeIt({ lang }: { lang: Locale }) {
   return (
     <section aria-labelledby="make-title" className="mk-section mk-make">
       <div className="mk-wrap">
-        <h2 id="make-title" className="mk-h2">
-          {t.title}
-        </h2>
         <Scrub range="enter" span={0.8} className="mk-make__grid">
+          <h2 id="make-title" className="mk-h2 mk-make__title">
+            {t.title}
+          </h2>
+          <div className="mk-make__photo" data-side="start">
+            <Photo name="laptop-jasmine" alt={t.self.photoAlt} sizes="(min-width: 76rem) 37rem, (min-width: 768px) 48vw, 100vw" />
+          </div>
           <div className="mk-make__block" data-side="start">
             <h3 className="mk-h3">{t.self.title}</h3>
             <p className="mk-make__body">{t.self.body}</p>

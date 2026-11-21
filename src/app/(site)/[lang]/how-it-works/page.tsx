@@ -5,6 +5,7 @@ import { isLocale } from "@/i18n/config";
 import { Finale } from "@/features/marketing/components/home/sections";
 import type { Shot } from "@/features/marketing/components/phone";
 import { PhoneSequence } from "@/features/marketing/components/phone-sequence";
+import { Photo } from "@/features/marketing/components/photo";
 import { MarketingShell } from "@/features/marketing/components/shell";
 import { marketingMessages } from "@/features/marketing/messages";
 import { localHref, pageMetadata } from "@/features/marketing/site";
@@ -22,9 +23,14 @@ export default async function HowItWorksPage({ params }: PageProps<"/[lang]/how-
   const t = marketingMessages(lang).howPage;
   return (
     <MarketingShell lang={lang} path="/how-it-works">
-      <div className="mk-wrap mk-pagehead">
-        <h1 className="mk-h1">{t.title}</h1>
-        <p className="mk-lead mk-measure">{t.lead}</p>
+      <div className="mk-wrap mk-pagehead mk-pagehead--photo">
+        <div>
+          <h1 className="mk-h1">{t.title}</h1>
+          <p className="mk-lead mk-measure">{t.lead}</p>
+        </div>
+        <div className="mk-pagehead__photo">
+          <Photo name="laptop-jasmine" alt={t.photoAlt} sizes="(min-width: 76rem) 31rem, (min-width: 900px) 40vw, 100vw" eager />
+        </div>
       </div>
       <PhoneSequence
         lang={lang}

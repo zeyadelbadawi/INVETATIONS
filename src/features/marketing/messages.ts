@@ -66,6 +66,8 @@ const en = {
       { shot: "quiz", alt: "A quiz question about the couple with answer buttons", body: "Every answer they get right scores for that side." },
       { shot: "scoreboard", alt: "Live team scores for each side", body: "The score keeps moving where everyone can see it, right up to the night." },
     ],
+    moment: "No app and no sign-up: grandma opens it like any WhatsApp message.",
+    momentAlt: "An older guest in gold bracelets opening the invitation on her phone, at a table under string lights",
   },
   reveal: {
     alt: "A white gift box tied with a ribbon on a wooden table, balloons behind it; light escapes from under the lid.",
@@ -108,9 +110,9 @@ const en = {
   lifecycle: {
     title: "One link, before the day, on the day and after it",
     stages: [
-      { when: "Before", items: ["Details, countdown, map and calendar", "Replies with the headcount", "Teams and the first games"] },
-      { when: "On the day", items: ["The reveal reaches every phone in the same second", "Scores move as people play", "You settle the predictions"] },
-      { when: "After", items: ["A recap page with the winners", "Cards for the winning team and the rest", "Wishes stay, and the page does not expire"] },
+      { when: "Before", photoAlt: "A guest under paper lanterns, reading the invitation on her phone", items: ["Details, countdown, map and calendar", "Replies with the headcount", "Teams and the first games"] },
+      { when: "On the day", photoAlt: "A hall under brass lanterns, the guests with their hands in the air", items: ["The reveal reaches every phone in the same second", "Scores move as people play", "You settle the predictions"] },
+      { when: "After", photoAlt: "Late in the evening, the older relatives still sitting together at a garden table", items: ["A recap page with the winners", "Cards for the winning team and the rest", "Wishes stay, and the page does not expire"] },
     ],
   },
   privacy: {
@@ -124,6 +126,7 @@ const en = {
       title: "Yourself",
       body: "Pick a template, type the names and details, and watch the invitation change on a phone preview as you type. Add guests by typing, pasting a list or uploading Excel/CSV, then send from your own WhatsApp.",
       cta: "Start building",
+      photoAlt: "A laptop on a carved wooden desk at night, with jasmine and a glass of tea beside it",
     },
     done: {
       title: "Done for you",
@@ -243,6 +246,7 @@ const en = {
   howPage: {
     title: "From sign-up to the recap",
     lead: "Six steps, most of them done from your phone. The screens are the dashboard as you will use it.",
+    photoAlt: "A laptop on a carved wooden desk at night, with jasmine and a glass of tea beside it",
     steps: [
       { title: "Sign up and pick your occasion", body: "With email or Google. Choose a wedding, a gender reveal or a company event, then a template.", shot: "host-new", alt: "New event: choosing the occasion, then giving it a short name" },
       { title: "Make it yours", body: "Names, date, venue, programme, dress code and questions. Switch on the games you want; every change shows on the phone preview straight away.", shot: "host-editor", alt: "The editor: the opening line and the names, in English and Arabic, with Edit and Preview tabs" },
@@ -303,6 +307,8 @@ const ar: MarketingMessages = {
       { shot: "quiz", alt: "سؤال في مسابقة العرسان بأزرار الإجابات", body: "وكل إجابة صح بتزوّد نقط فريقه." },
       { shot: "scoreboard", alt: "نتيجة الفرق على الهوا", body: "والنتيجة بتفضل تتحرك قدام الكل لحد ليلة الفرح." },
     ],
+    moment: "من غير تطبيق ولا تسجيل: تيتة بتفتحها زي أي رسالة واتساب.",
+    momentAlt: "ضيفة كبيرة بأساور دهب بتفتح الدعوة على موبايلها، على ترابيزة تحت لمبات السهرة",
   },
   reveal: {
     alt: "علبة هدية بيضا بفيونكة على ترابيزة خشب وبلالين وراها، ونور طالع من تحت الغطا.",
@@ -339,9 +345,9 @@ const ar: MarketingMessages = {
   lifecycle: {
     title: "لينك واحد، قبل اليوم وفيه وبعده",
     stages: [
-      { when: "قبل", items: ["التفاصيل والعد التنازلي والخريطة والتقويم", "الردود بعدد الأفراد", "الفرق وأول الألعاب"] },
-      { when: "في اليوم", items: ["الكشف بيوصل كل الموبايلات في نفس الثانية", "النتيجة بتتحرك والناس بتلعب", "إنت بتحسم التوقعات"] },
-      { when: "بعد", items: ["صفحة ملخص بالفايزين", "كروت للفريق الكسبان وللباقيين", "الأمنيات فاضلة، والصفحة ما بتنتهيش"] },
+      { when: "قبل", photoAlt: "ضيفة تحت فوانيس ورق، بتقرا الدعوة على موبايلها", items: ["التفاصيل والعد التنازلي والخريطة والتقويم", "الردود بعدد الأفراد", "الفرق وأول الألعاب"] },
+      { when: "في اليوم", photoAlt: "قاعة تحت فوانيس نحاس، والمعازيم رافعين إيديهم", items: ["الكشف بيوصل كل الموبايلات في نفس الثانية", "النتيجة بتتحرك والناس بتلعب", "إنت بتحسم التوقعات"] },
+      { when: "بعد", photoAlt: "آخر السهرة، الكبار لسه قاعدين مع بعض على ترابيزة في الجنينة", items: ["صفحة ملخص بالفايزين", "كروت للفريق الكسبان وللباقيين", "الأمنيات فاضلة، والصفحة ما بتنتهيش"] },
     ],
   },
   privacy: {
@@ -355,6 +361,7 @@ const ar: MarketingMessages = {
       title: "بنفسك",
       body: "اختار قالب، اكتب الأسامي والتفاصيل، وشوف الدعوة بتتغير على شاشة موبايل قدامك وإنت بتكتب. ضيف المعازيم كتابة أو لصق أو من ملف إكسل، وابعت من واتسابك إنت.",
       cta: "ابدأ التصميم",
+      photoAlt: "لابتوب على مكتب خشب منقوش بالليل، وجنبه فل وكوباية شاي",
     },
     done: {
       title: "نعملهالك",
@@ -474,6 +481,7 @@ const ar: MarketingMessages = {
   howPage: {
     title: "من التسجيل لحد الملخص",
     lead: "ست خطوات، وأغلبها من موبايلك. الشاشات دي من لوحة التحكم زي ما هتستخدمها.",
+    photoAlt: "لابتوب على مكتب خشب منقوش بالليل، وجنبه فل وكوباية شاي",
     steps: [
       { title: "سجّل واختار مناسبتك", body: "بالإيميل أو بجوجل. اختار فرح، أو كشف نوع المولود، أو فعالية شركة، وبعدين القالب.", shot: "host-new", alt: "مناسبة جديدة: اختيار نوع المناسبة، وبعدين اسم قصير ليها" },
       { title: "خليها بتاعتك", body: "الأسامي والتاريخ والمكان والبرنامج واللبس والأسئلة. شغّل الألعاب اللي تعجبك، وكل تعديل بيظهر على المعاينة على طول.", shot: "host-editor", alt: "شاشة التصميم: كلام الافتتاحية والأسامي بالعربي والإنجليزي، مع تعديل ومعاينة" },
